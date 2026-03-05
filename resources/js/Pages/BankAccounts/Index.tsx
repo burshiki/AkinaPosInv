@@ -1,0 +1,263 @@
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { Head, Link, router, useForm } from '@inertiajs/react';
+import { Button } from '@/Components/ui/button';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/Components/ui/card';
+import { Badge } from '@/Components/ui/badge';
+import { Input } from '@/Components/ui/input';
+import { Label } from '@/Components/ui/label';
+import { Textarea } from '@/Components/ui/textarea';
+import { Checkbox } from '@/Components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/Components/ui/dialog';
+import { PermissionGate } from '@/Components/app/permission-gate';
+import { formatCurrency } from '@/lib/utils';
+import { Eye, ArrowLeftRight, Landmark, Plus, Pencil, Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import { useConfirm } from '@/Components/app/confirm-dialog';
+import type { BankAccount } from '@/types';
+
+interface Props {
+    bankAccounts: BankAccount[];
+    totalBalance: number;
+}
+
+const TYPE_LABELS: Record<string, string> = {
+    cash_drawer: 'Cash Drawer',
+    gcash:       'GCash',
+    maya:        'Maya',
+    bdo:         'BDO',
+    other:       'Other',
+};
+
+const ACCOUNT_TYPES = ['cash_drawer', 'gcash', 'maya', 'bdo', 'other'] as const;
+
+export default function BankAccountsIndex({ bankAccounts, totalBalance }: Props) {
+    const confirm = useConfirm();
+    const [dialogOpen, setDialogOpen] = useState(false);
+    const [editingAccount, setEditingAccount] = useState<BankAccount | null>(null);
+
+    const form = useForm({
+        name: '',
+        type: 'other',
+        account_number: '',
+        description: '',
+        balance: '0',
+        is_active: true as boolean,
+    });
+
+    const openCreate = () => {
+        setEditingAccount(null);
+        form.setData({ name: '', type: 'other', account_number: '', description: '', balance: '0', is_active: true });
+        form.clearErrors();
+        setDialogOpen(true);
+    };
+
+    const openEdit = (account: BankAccount) => {
+        setEditingAccount(account);
+        form.setData({
+            name: account.name,
+            type: account.type,
+            account_number: account.account_number ?? '',
+            description: account.description ?? '',
+            balance: String(account.balance),
+            is_active: account.is_active,
+        });
+        form.clearErrors();
+        setDialogOpen(true);
+    };
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (editingAccount) {
+            form.put(route('bank-accounts.update', editingAccount.id), { onSuccess: () => setDialogOpen(false) });
+        } else {
+            form.post(route('bank-accounts.store'), { onSuccess: () => setDialogOpen(false) });
+        }
+    };
+
+    const handleDelete = async (account: BankAccount) => {
+        const hasHistory = account.ledger_entries_count && account.ledger_entries_count > 0;
+        const ok = await confirm({
+            title: hasHistory ? 'Deactivate Account' : 'Delete Account',
+            description: hasHistory
+                ? `"${account.name}" has ledger history — it will be deactivated instead. Continue?`
+                : `Delete "${account.name}"?`,
+            confirmLabel: hasHistory ? 'Deactivate' : 'Delete',
+            variant: 'destructive',
+        });
+        if (!ok) return;
+        router.delete(route('bank-accounts.destroy', account.id));
+    };
+
+    const active   = bankAccounts.filter((a) => a.is_active);
+    const inactive = bankAccounts.filter((a) => !a.is_active);
+
+    return (
+        <AuthenticatedLayout header="Bank Accounts">
+            <Head title="Bank Accounts" />
+
+            <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                    <Card className="w-auto">
+                        <CardContent className="flex items-center gap-3 p-4">
+                            <Landmark className="h-8 w-8 text-muted-foreground" />
+                            <div>
+                                <p className="text-sm text-muted-foreground">Total Balance</p>
+                                <p className="text-2xl font-bold">{formatCurrency(totalBalance)}</p>
+                            </div>
+                        </CardContent>
+                    </Card>
+                    <div className="flex gap-2">
+                        <PermissionGate permission="banking.manage">
+                            <Button onClick={openCreate}>
+                                <Plus className="mr-2 h-4 w-4" /> Add Account
+                            </Button>
+                        </PermissionGate>
+                        <PermissionGate permission="banking.transfer">
+                            <Button variant="outline" asChild>
+                                <Link href={route('bank-accounts.transfer')}>
+                                    <ArrowLeftRight className="mr-2 h-4 w-4" /> Transfer Funds
+                                </Link>
+                            </Button>
+                        </PermissionGate>
+                    </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {active.map((account) => (
+                        <Card key={account.id}>
+                            <CardHeader className="pb-3">
+                                <div className="flex items-center justify-between">
+                                    <CardTitle className="text-lg">{account.name}</CardTitle>
+                                    <Badge variant="outline">{TYPE_LABELS[account.type] ?? account.type}</Badge>
+                                </div>
+                                {account.account_number && (
+                                    <p className="text-sm text-muted-foreground">{account.account_number}</p>
+                                )}
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-3xl font-bold">{formatCurrency(account.balance)}</div>
+                                {account.description && (
+                                    <p className="mt-1 text-xs text-muted-foreground">{account.description}</p>
+                                )}
+                            </CardContent>
+                            <CardFooter className="flex flex-wrap gap-2">
+                                <Button variant="outline" size="sm" asChild className="flex-1">
+                                    <Link href={route('bank-accounts.show', account.id)}>
+                                        <Eye className="mr-1 h-3 w-3" /> Ledger
+                                    </Link>
+                                </Button>
+                                <PermissionGate permission="banking.manage">
+                                    <Button variant="outline" size="sm" asChild className="flex-1">
+                                        <Link href={route('bank-accounts.record-entry', account.id)}>
+                                            Record Entry
+                                        </Link>
+                                    </Button>
+                                    <Button variant="ghost" size="sm" onClick={() => openEdit(account)}>
+                                        <Pencil className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="text-destructive hover:text-destructive"
+                                        onClick={() => handleDelete(account)}
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                </PermissionGate>
+                            </CardFooter>
+                        </Card>
+                    ))}
+                </div>
+
+                {inactive.length > 0 && (
+                    <div>
+                        <h3 className="mb-3 text-sm font-medium text-muted-foreground">Inactive Accounts</h3>
+                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 opacity-60">
+                            {inactive.map((account) => (
+                                <Card key={account.id} className="border-dashed">
+                                    <CardHeader className="pb-3">
+                                        <div className="flex items-center justify-between">
+                                            <CardTitle className="text-base">{account.name}</CardTitle>
+                                            <Badge variant="secondary">Inactive</Badge>
+                                        </div>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="text-xl font-semibold">{formatCurrency(account.balance)}</div>
+                                    </CardContent>
+                                    <CardFooter className="flex gap-2">
+                                        <Button variant="outline" size="sm" asChild>
+                                            <Link href={route('bank-accounts.show', account.id)}>
+                                                <Eye className="mr-1 h-3 w-3" /> Ledger
+                                            </Link>
+                                        </Button>
+                                        <PermissionGate permission="banking.manage">
+                                            <Button variant="ghost" size="sm" onClick={() => openEdit(account)}>
+                                                <Pencil className="h-4 w-4" />
+                                            </Button>
+                                        </PermissionGate>
+                                    </CardFooter>
+                                </Card>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>{editingAccount ? `Edit: ${editingAccount.name}` : 'New Bank Account'}</DialogTitle>
+                    </DialogHeader>
+                    <form id="bank-account-form" onSubmit={handleSubmit} className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="ba_name">Account Name *</Label>
+                            <Input id="ba_name" value={form.data.name} onChange={(e) => form.setData('name', e.target.value)} />
+                            {form.errors.name && <p className="text-sm text-destructive">{form.errors.name}</p>}
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="ba_type">Type *</Label>
+                            <Select value={form.data.type} onValueChange={(v) => form.setData('type', v)}>
+                                <SelectTrigger id="ba_type">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {ACCOUNT_TYPES.map((t) => (
+                                        <SelectItem key={t} value={t}>{TYPE_LABELS[t]}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            {form.errors.type && <p className="text-sm text-destructive">{form.errors.type}</p>}
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="ba_acctno">Account Number</Label>
+                            <Input id="ba_acctno" value={form.data.account_number} onChange={(e) => form.setData('account_number', e.target.value)} />
+                        </div>
+                        {!editingAccount && (
+                            <div className="space-y-2">
+                                <Label htmlFor="ba_balance">Opening Balance</Label>
+                                <Input id="ba_balance" type="number" step="0.01" min="0" value={form.data.balance} onChange={(e) => form.setData('balance', e.target.value)} />
+                                <p className="text-xs text-muted-foreground">Balance can only be changed through ledger entries after creation.</p>
+                                {form.errors.balance && <p className="text-sm text-destructive">{form.errors.balance}</p>}
+                            </div>
+                        )}
+                        <div className="space-y-2">
+                            <Label htmlFor="ba_desc">Description</Label>
+                            <Textarea id="ba_desc" value={form.data.description} onChange={(e) => form.setData('description', e.target.value)} rows={2} />
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Checkbox id="ba_active" checked={form.data.is_active} onCheckedChange={(v) => form.setData('is_active', !!v)} />
+                            <Label htmlFor="ba_active">Active</Label>
+                        </div>
+                    </form>
+                    <DialogFooter>
+                        <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+                        <Button type="submit" form="bank-account-form" disabled={form.processing}>
+                            {form.processing ? 'Saving...' : editingAccount ? 'Save Changes' : 'Create Account'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </AuthenticatedLayout>
+    );
+}
