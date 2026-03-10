@@ -24,6 +24,7 @@ class Product extends Model
         'low_stock_threshold',
         'is_assembled',
         'is_component',
+        'has_variants',
         'has_warranty',
         'warranty_months',
         'is_active',
@@ -38,6 +39,7 @@ class Product extends Model
             'low_stock_threshold' => 'integer',
             'is_assembled' => 'boolean',
             'is_component' => 'boolean',
+            'has_variants' => 'boolean',
             'has_warranty' => 'boolean',
             'warranty_months' => 'integer',
             'is_active' => 'boolean',
@@ -69,6 +71,16 @@ class Product extends Model
     public function assemblyBuilds()
     {
         return $this->hasMany(AssemblyBuild::class);
+    }
+
+    public function variants()
+    {
+        return $this->hasMany(ProductVariant::class);
+    }
+
+    public function inventoryLots()
+    {
+        return $this->hasMany(InventoryLot::class);
     }
 
     public function isLowStock(): bool

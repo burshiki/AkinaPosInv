@@ -13,6 +13,9 @@ use Illuminate\Support\Facades\DB;
 
 class PurchaseOrderService
 {
+    public function __construct(
+        protected AccountsPayableService $apService
+    ) {}
     public function generatePONumber(): string
     {
         $prefix = 'PO-' . date('Ymd') . '-';
@@ -65,20 +68,21 @@ class PurchaseOrderService
     }
 
     /**
-     * Transition draft → ordered (simplified 3-state workflow).
+     * Transition draft → approved.
      */
-    public function markAsOrdered(PurchaseOrder $po): PurchaseOrder
+    public function approve(PurchaseOrder $po, int $approvedBy): PurchaseOrder
     {
         $po->update([
-            'status'     => 'ordered',
-            'ordered_at' => now(),
+            'status'      => 'approved',
+            'approved_at' => now(),
+            'approved_by' => $approvedBy,
         ]);
         return $po;
     }
 
-    public function receiveItems(PurchaseOrder $po, array $items, float $shippingFee = 0, ?string $notes = null): PurchaseOrder
+    public function receiveItems(PurchaseOrder $po, array $items, float $shippingFee = 0, ?string $notes = null, ?string $billDueDate = null): PurchaseOrder
     {
-        return DB::transaction(function () use ($po, $items, $shippingFee, $notes) {
+        return DB::transaction(function () use ($po, $items, $shippingFee, $notes, $billDueDate) {
             foreach ($items as $itemData) {
                 /** @var PurchaseOrderItem $item */
                 $item = $po->items()->findOrFail($itemData['id']);
@@ -145,6 +149,11 @@ class PurchaseOrderService
                     ? ($po->notes ? $po->notes . "\n" . $notes : $notes)
                     : $po->notes,
             ]);
+
+            // Auto-create bill when PO is fully received
+            if ($status === 'received' && !$po->bill) {
+                $this->apService->createBillFromPurchaseOrder($po->fresh('items'), $billDueDate);
+            }
 
             return $po->fresh('items');
         });

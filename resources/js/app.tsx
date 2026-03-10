@@ -8,6 +8,15 @@ import { ConfirmProvider } from '@/Components/app/confirm-dialog';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
+// Register Service Worker
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(() => {
+            // SW registration failed - app continues normally
+        });
+    });
+}
+
 createInertiaApp({
     title: (title) => `${title} - ${appName}`,
     resolve: (name) =>

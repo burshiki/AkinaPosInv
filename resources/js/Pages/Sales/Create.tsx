@@ -45,6 +45,7 @@ export default function SalesCreate({ products, categories, bankAccounts, custom
     const [customerSearch, setCustomerSearch] = useState('');
     const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
     const [discountAmount, setDiscountAmount] = useState<string>('0');
+    const [discountType, setDiscountType] = useState<'amount' | 'percent'>('amount');
     const [notes, setNotes] = useState('');
     const [processing, setProcessing] = useState(false);
     const [showReceiptModal, setShowReceiptModal] = useState(false);
@@ -159,7 +160,10 @@ export default function SalesCreate({ products, categories, bankAccounts, custom
 
     // Cart calculations
     const subtotal = cart.reduce((sum, item) => sum + item.product.selling_price * item.quantity, 0);
-    const discount = parseFloat(discountAmount) || 0;
+    const discountRaw = parseFloat(discountAmount) || 0;
+    const discount = discountType === 'percent'
+        ? Math.min(Math.round(subtotal * (discountRaw / 100) * 100) / 100, subtotal)
+        : Math.min(discountRaw, subtotal);
     const total = Math.max(0, subtotal - discount);
     const tendered = parseFloat(amountTendered) || 0;
     const change = paymentMethod === 'cash' ? Math.max(0, tendered - total) : 0;
@@ -282,6 +286,7 @@ export default function SalesCreate({ products, categories, bankAccounts, custom
                 customer_name: customerName.trim() || 'Walk-in',
                 customer_phone: customerPhone || null,
                 discount_amount: discountAmount || '0',
+                discount_type: discountType,
                 notes: notes || null,
                 items: cart.map((item) => ({
                     product_id: item.product.id,
@@ -536,16 +541,33 @@ export default function SalesCreate({ products, categories, bankAccounts, custom
                                 </div>
                                 <div className="flex items-center justify-between gap-2">
                                     <span>Discount <kbd className="text-[10px] opacity-50">F4</kbd>:</span>
-                                    <Input
-                                        id="discount-input"
-                                        type="number"
-                                        min="0"
-                                        step="0.01"
-                                        value={discountAmount}
-                                        onChange={(e) => setDiscountAmount(e.target.value)}
-                                        className="h-7 w-24 text-right text-sm"
-                                    />
+                                    <div className="flex items-center gap-1">
+                                        <button
+                                            type="button"
+                                            onClick={() => setDiscountType(discountType === 'amount' ? 'percent' : 'amount')}
+                                            className="h-7 rounded border px-1.5 text-xs font-medium hover:bg-accent shrink-0"
+                                            title="Toggle discount type"
+                                        >
+                                            {discountType === 'percent' ? '%' : '₱'}
+                                        </button>
+                                        <Input
+                                            id="discount-input"
+                                            type="number"
+                                            min="0"
+                                            max={discountType === 'percent' ? '100' : undefined}
+                                            step="0.01"
+                                            value={discountAmount}
+                                            onChange={(e) => setDiscountAmount(e.target.value)}
+                                            className="h-7 w-24 text-right text-sm"
+                                        />
+                                    </div>
                                 </div>
+                                {discount > 0 && discountType === 'percent' && (
+                                    <div className="flex justify-between text-xs text-muted-foreground">
+                                        <span>({discountRaw}% off)</span>
+                                        <span>-{formatCurrency(discount)}</span>
+                                    </div>
+                                )}
                                 <Separator />
                                 <div className="flex justify-between text-base font-bold">
                                     <span>TOTAL:</span>

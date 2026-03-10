@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreCustomerRequest;
 use App\Http\Requests\UpdateCustomerRequest;
 use App\Models\Customer;
+use App\Models\Sale;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -66,8 +67,22 @@ class CustomerController extends Controller
 
     public function show(Customer $customer)
     {
+        $purchaseHistory = Sale::where('customer_id', $customer->id)
+            ->with('items')
+            ->orderByDesc('sold_at')
+            ->paginate(15)
+            ->withQueryString();
+
+        $stats = [
+            'total_purchases' => Sale::where('customer_id', $customer->id)->where('status', 'completed')->count(),
+            'total_spent' => Sale::where('customer_id', $customer->id)->where('status', 'completed')->sum('total'),
+            'last_purchase' => Sale::where('customer_id', $customer->id)->where('status', 'completed')->latest('sold_at')->value('sold_at'),
+        ];
+
         return Inertia::render('Customers/Show', [
             'customer' => $customer,
+            'purchaseHistory' => $purchaseHistory,
+            'stats' => $stats,
         ]);
     }
 

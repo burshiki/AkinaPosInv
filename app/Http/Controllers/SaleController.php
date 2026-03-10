@@ -105,9 +105,20 @@ class SaleController extends Controller
 
     public function void(VoidSaleRequest $request, Sale $sale)
     {
-
         if ($sale->status !== 'completed') {
             return back()->with('error', 'Only completed sales can be voided.');
+        }
+
+        // Void is only allowed within the same cash drawer session the sale was created in.
+        // For prior-session corrections, use the Return flow instead.
+        $openSession = CashDrawerSession::open()->latest('opened_at')->first();
+
+        if (!$openSession) {
+            return back()->with('error', 'No open cash drawer session. Open a session before voiding.');
+        }
+
+        if ($sale->created_at->lt($openSession->opened_at)) {
+            return back()->with('error', 'This sale belongs to a previous session and cannot be voided. Use Return instead.');
         }
 
         try {

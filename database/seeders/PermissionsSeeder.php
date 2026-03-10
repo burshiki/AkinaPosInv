@@ -32,6 +32,15 @@ class PermissionsSeeder extends Seeder
             'warranties.check', 'warranties.send_to_supplier',
             // Stock module
             'stock.view', 'stock.adjust', 'stock.manage_inventory',
+            // Payroll module
+            'payroll.view', 'payroll.manage_employees', 'payroll.attendance',
+            'payroll.process', 'payroll.approve', 'payroll.reports',
+            // Promotions module
+            'promotions.view', 'promotions.manage',
+            // Leave management
+            'leave.view', 'leave.request', 'leave.approve',
+            // Accounts Payable module
+            'ap.view', 'ap.create', 'ap.pay', 'ap.void', 'ap.manage_recurring',
         ];
 
         foreach ($permissions as $permission) {

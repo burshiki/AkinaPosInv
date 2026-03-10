@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\DebtService;
+use App\Services\AccountsPayableService;
 use App\Services\ReportService;
 use Inertia\Inertia;
 
@@ -10,7 +11,8 @@ class ReportController extends Controller
 {
     public function __construct(
         protected ReportService $reportService,
-        protected DebtService $debtService
+        protected DebtService $debtService,
+        protected AccountsPayableService $apService
     ) {}
 
     public function index()
@@ -25,6 +27,7 @@ class ReportController extends Controller
             'inventory'     => $this->inventoryReport(),
             'financial'     => $this->financialReport(),
             'debt-aging'    => $this->debtAgingReport(),
+            'bill-aging'    => $this->billAgingReport(),
             'internal-use'  => $this->internalUseReportPage(),
             'z-report'      => $this->zReportPage(),
             default         => abort(404),
@@ -107,6 +110,13 @@ class ReportController extends Controller
         return Inertia::render('Reports/ZReport', [
             'report'  => $report,
             'filters' => ['date' => $date, 'session_id' => $sessionId ?? ''],
+        ]);
+    }
+
+    private function billAgingReport()
+    {
+        return Inertia::render('Reports/BillAging', [
+            'report' => $this->apService->getAgingReport(),
         ]);
     }
 }

@@ -22,6 +22,7 @@ class Sale extends Model
         'cash_drawer_session_id',
         'subtotal',
         'discount_amount',
+        'discount_type',
         'tax_amount',
         'total',
         'amount_tendered',

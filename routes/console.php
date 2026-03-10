@@ -10,3 +10,9 @@ Artisan::command('inspire', function () {
 
 // Automated SQLite backup — runs daily at 2:00 AM
 Schedule::command('backup:sqlite')->dailyAt('02:00');
+
+// Generate recurring bills — runs daily at 6:00 AM
+Schedule::command('bills:generate-recurring')->dailyAt('06:00');
+
+// Mark overdue bills — runs daily at 6:15 AM
+Schedule::command('bills:mark-overdue')->dailyAt('06:15');

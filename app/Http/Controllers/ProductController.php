@@ -6,6 +6,8 @@ use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\StockAdjustment;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class ProductController extends Controller
@@ -96,7 +98,25 @@ class ProductController extends Controller
         $data = $request->validated();
         $data['cost_price'] = $data['cost_price'] ?? 0;
 
-        $product->update($data);
+        DB::transaction(function () use ($data, $product) {
+            $beforeQty = $product->stock_quantity;
+            $afterQty  = (int) ($data['stock_quantity'] ?? $beforeQty);
+
+            $product->update($data);
+
+            if ($afterQty !== $beforeQty) {
+                StockAdjustment::create([
+                    'product_id'           => $product->id,
+                    'user_id'              => auth()->id(),
+                    'inventory_session_id' => null,
+                    'type'                 => 'product_edit',
+                    'before_qty'           => $beforeQty,
+                    'change_qty'           => $afterQty - $beforeQty,
+                    'after_qty'            => $afterQty,
+                    'reason'               => 'Quantity updated via product edit',
+                ]);
+            }
+        });
 
         return redirect()->route('products.index')
             ->with('success', "Product {$product->name} updated.");

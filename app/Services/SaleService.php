@@ -3,8 +3,12 @@
 namespace App\Services;
 
 use App\Exceptions\InsufficientStockException;
+use App\Jobs\LowStockAlertJob;
 use App\Models\BankAccount;
 use App\Models\CashDrawerSession;
+use App\Models\CustomerDebt;
+use App\Models\Customer;
+use App\Models\InventoryLot;
 use App\Models\InventorySession;
 use App\Models\Product;
 use App\Models\Sale;
@@ -33,27 +37,48 @@ class SaleService
             $receiptNumber = $this->generateReceiptNumber();
             $officialReceiptNumber = $this->generateOfficialReceiptNumber();
 
-            $subtotal = collect($validated['items'])->sum(
-                fn ($item) => $item['quantity'] * $item['unit_price']
-            );
-            $discount = $validated['discount_amount'] ?? 0;
-
-            // Calculate tax for each item and get total tax
-            $totalTax = 0;
+            // Calculate item subtotals (after per-item discounts)
             $itemsWithTax = [];
+            $subtotal = 0;
+            $totalTax = 0;
+
             foreach ($validated['items'] as $item) {
                 $product = Product::find($item['product_id']);
-                $itemSubtotal = $item['quantity'] * $item['unit_price'];
+                $lineSubtotal = $item['quantity'] * $item['unit_price'];
+
+                // Per-item discount
+                $itemDiscountAmt = 0;
+                $itemDiscountType = $item['discount_type'] ?? 'amount';
+                $itemDiscountVal = (float) ($item['discount_amount'] ?? 0);
+                if ($itemDiscountVal > 0) {
+                    $itemDiscountAmt = $itemDiscountType === 'percent'
+                        ? round($lineSubtotal * ($itemDiscountVal / 100), 2)
+                        : min($itemDiscountVal, $lineSubtotal);
+                }
+
+                $discountedSubtotal = $lineSubtotal - $itemDiscountAmt;
                 $taxRate = ($product && !$product->is_vat_exempt) ? (float) $product->tax_rate : 0;
-                $itemTax = $taxRate > 0 ? round($itemSubtotal * ($taxRate / 100), 2) : 0;
+                $itemTax = $taxRate > 0 ? round($discountedSubtotal * ($taxRate / 100), 2) : 0;
+
+                $subtotal += $lineSubtotal;
                 $totalTax += $itemTax;
+
                 $itemsWithTax[] = array_merge($item, [
                     'tax_rate' => $taxRate,
                     'tax_amount' => $itemTax,
+                    'item_discount_amount' => $itemDiscountAmt,
+                    'item_discount_type' => $itemDiscountType,
                 ]);
             }
 
-            $total = $subtotal - $discount + $totalTax;
+            // Sale-level discount (supports percent or amount)
+            $discountType = $validated['discount_type'] ?? 'amount';
+            $discountValue = (float) ($validated['discount_amount'] ?? 0);
+            $saleDiscount = $discountType === 'percent'
+                ? round($subtotal * ($discountValue / 100), 2)
+                : $discountValue;
+
+            $total = $subtotal - $saleDiscount + $totalTax;
 
             // Get active cash drawer session for this user
             $drawerSession = CashDrawerSession::forUser($cashier->id)->open()->first();
@@ -69,7 +94,8 @@ class SaleService
                 'bank_account_id'         => $validated['bank_account_id'] ?? null,
                 'cash_drawer_session_id'  => $drawerSession?->id,
                 'subtotal'                => $subtotal,
-                'discount_amount'         => $discount,
+                'discount_amount'         => $saleDiscount,
+                'discount_type'           => $discountType,
                 'tax_amount'              => $totalTax,
                 'total'                   => $total,
                 'amount_tendered'         => $validated['amount_tendered'] ?? null,
@@ -78,6 +104,8 @@ class SaleService
                 'status'                  => 'completed',
                 'sold_at'                 => now(),
             ]);
+
+            $lowStockProductIds = [];
 
             foreach ($itemsWithTax as $item) {
                 $product = Product::lockForUpdate()->findOrFail($item['product_id']);
@@ -88,17 +116,24 @@ class SaleService
                     );
                 }
 
+                // FIFO: consume from oldest lots first
+                $this->consumeInventoryLots($product->id, $item['quantity']);
+
+                $costPrice = $product->cost_price;
+
                 $saleItem = SaleItem::create([
-                    'sale_id'      => $sale->id,
-                    'product_id'   => $product->id,
-                    'product_name' => $product->name,
-                    'product_sku'  => $product->sku ?? null,
-                    'quantity'     => $item['quantity'],
-                    'unit_price'   => $item['unit_price'],
-                    'cost_price'   => $product->cost_price,
-                    'tax_rate'     => $item['tax_rate'],
-                    'tax_amount'   => $item['tax_amount'],
-                    'subtotal'     => $item['quantity'] * $item['unit_price'],
+                    'sale_id'         => $sale->id,
+                    'product_id'      => $product->id,
+                    'product_name'    => $product->name,
+                    'product_sku'     => $product->sku ?? null,
+                    'quantity'        => $item['quantity'],
+                    'unit_price'      => $item['unit_price'],
+                    'cost_price'      => $costPrice,
+                    'tax_rate'        => $item['tax_rate'],
+                    'tax_amount'      => $item['tax_amount'],
+                    'subtotal'        => $item['quantity'] * $item['unit_price'],
+                    'discount_amount' => $item['item_discount_amount'],
+                    'discount_type'   => $item['item_discount_type'],
                 ]);
 
                 $beforeQty = $product->stock_quantity;
@@ -113,6 +148,11 @@ class SaleService
                     'after_qty'   => $beforeQty - $item['quantity'],
                     'reason'      => "Sale #{$receiptNumber}",
                 ]);
+
+                // Check low stock for alert
+                if ($product->fresh()->isLowStock()) {
+                    $lowStockProductIds[] = $product->id;
+                }
 
                 // Auto-create warranty record if product has warranty
                 if ($product->has_warranty && $product->warranty_months) {
@@ -139,8 +179,41 @@ class SaleService
                 $this->debtService->createDebtFromSale($sale);
             }
 
+            // Award loyalty points (1 point per peso spent)
+            if ($sale->customer_id) {
+                $customer = Customer::find($sale->customer_id);
+                if ($customer) {
+                    $points = (int) floor($total);
+                    if ($points > 0) {
+                        $customer->addLoyaltyPoints($points, $sale->id, "Sale #{$receiptNumber}");
+                    }
+                }
+            }
+
+            // Dispatch low stock alerts after transaction
+            foreach ($lowStockProductIds as $productId) {
+                LowStockAlertJob::dispatch($productId);
+            }
+
             return $sale->load('items');
         });
+    }
+
+    /**
+     * Consume inventory lots in FIFO order.
+     */
+    private function consumeInventoryLots(int $productId, int $quantity): void
+    {
+        $lots = InventoryLot::fifo($productId)->get();
+        $remaining = $quantity;
+
+        foreach ($lots as $lot) {
+            if ($remaining <= 0) break;
+
+            $consume = min($remaining, $lot->quantity_remaining);
+            $lot->decrement('quantity_remaining', $consume);
+            $remaining -= $consume;
+        }
     }
 
     public function voidSale(Sale $sale, User $user): Sale
@@ -175,6 +248,13 @@ class SaleService
                 }
             }
 
+            // Cancel any unpaid/partial debt created for this credit sale
+            if ($sale->payment_method === 'credit') {
+                CustomerDebt::where('sale_id', $sale->id)
+                    ->whereIn('status', ['unpaid', 'partial'])
+                    ->update(['status' => 'cancelled', 'balance' => 0]);
+            }
+
             $sale->update(['status' => 'voided']);
 
             return $sale->fresh();
@@ -197,10 +277,6 @@ class SaleService
         return sprintf('RCP-%s-%04d', $date, $sequence);
     }
 
-    /**
-     * Generate a BIR-compliant Official Receipt number.
-     * Sequential numbering: OR-YYYYMMDD-NNNN
-     */
     public function generateOfficialReceiptNumber(): string
     {
         $date = now()->format('Ymd');
@@ -217,9 +293,6 @@ class SaleService
         return sprintf('OR-%s-%04d', $date, $sequence);
     }
 
-    /**
-     * Generate a return/refund number.
-     */
     public function generateReturnNumber(): string
     {
         $date = now()->format('Ymd');
@@ -236,14 +309,6 @@ class SaleService
         return sprintf('RTN-%s-%04d', $date, $sequence);
     }
 
-    /**
-     * Process item-level return/refund for a completed sale.
-     *
-     * @param Sale $sale The original sale
-     * @param array $items Array of [{sale_item_id, quantity_returned, restock}]
-     * @param array $returnData {type: refund|exchange, refund_method, bank_account_id, reason, notes}
-     * @param User $user The user processing the return
-     */
     public function processReturn(Sale $sale, array $items, array $returnData, User $user): SaleReturn
     {
         if ($sale->status !== 'completed') {
@@ -264,7 +329,7 @@ class SaleService
                 'type'            => $returnData['type'] ?? 'refund',
                 'refund_method'   => $returnData['refund_method'] ?? null,
                 'bank_account_id' => $returnData['bank_account_id'] ?? null,
-                'total_refund'    => 0, // will update after calculating
+                'total_refund'    => 0,
                 'tax_refund'      => 0,
                 'reason'          => $returnData['reason'] ?? null,
                 'notes'           => $returnData['notes'] ?? null,
@@ -274,7 +339,6 @@ class SaleService
             foreach ($items as $returnItem) {
                 $saleItem = SaleItem::findOrFail($returnItem['sale_item_id']);
 
-                // Validate quantity doesn't exceed what was sold (minus any previous returns)
                 $previouslyReturned = SaleReturnItem::where('sale_item_id', $saleItem->id)
                     ->sum('quantity_returned');
                 $maxReturnable = $saleItem->quantity - $previouslyReturned;
@@ -303,7 +367,6 @@ class SaleService
                     'restock'          => $returnItem['restock'] ?? true,
                 ]);
 
-                // Restock if requested
                 if ($returnItem['restock'] ?? true) {
                     $product = Product::find($saleItem->product_id);
                     if ($product) {
@@ -328,7 +391,6 @@ class SaleService
                 'tax_refund'   => $totalTaxRefund,
             ]);
 
-            // Process refund payment
             if ($returnData['type'] === 'refund' && $totalRefund > 0) {
                 $refundTotal = $totalRefund + $totalTaxRefund;
 
@@ -342,7 +404,6 @@ class SaleService
                 }
             }
 
-            // Check if entire sale has been returned — update sale status
             $totalItemsSold = $sale->items->sum('quantity');
             $totalItemsReturned = SaleReturnItem::whereHas('saleReturn', fn ($q) => $q->where('sale_id', $sale->id))
                 ->sum('quantity_returned');

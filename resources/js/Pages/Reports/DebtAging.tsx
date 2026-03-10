@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { Badge } from '@/Components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/Components/ui/table';
 import { formatCurrency } from '@/lib/utils';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Download } from 'lucide-react';
 
 interface AgingCustomer {
     customer_name: string;
@@ -44,11 +44,18 @@ export default function DebtAgingReport({ report }: Props) {
             <Head title="Debt Aging Report" />
 
             <div className="space-y-4">
-                <Button variant="outline" size="sm" asChild>
-                    <Link href={route('reports.index')}>
-                        <ArrowLeft className="mr-2 h-4 w-4" /> Back to Reports
-                    </Link>
-                </Button>
+                <div className="flex items-center justify-between">
+                    <Button variant="outline" size="sm" asChild>
+                        <Link href={route('reports.index')}>
+                            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Reports
+                        </Link>
+                    </Button>
+                    <Button variant="outline" size="sm" asChild>
+                        <a href={route('exports.debt-aging')} download>
+                            <Download className="mr-2 h-4 w-4" /> Export CSV
+                        </a>
+                    </Button>
+                </div>
 
                 {/* Summary Cards */}
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">

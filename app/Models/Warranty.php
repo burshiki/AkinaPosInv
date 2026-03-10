@@ -23,6 +23,9 @@ class Warranty extends Model
         'check_reason',
         'supplier_id',
         'tracking_number',
+        'resolution_type',
+        'received_serial_number',
+        'received_notes',
     ];
 
     protected function casts(): array

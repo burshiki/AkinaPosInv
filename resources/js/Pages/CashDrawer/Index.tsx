@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
 import { formatCurrency } from '@/lib/utils';
 import { useDebounce } from '@/hooks/use-debounce';
-import { Eye, Search, DollarSign, AlertCircle, AlertTriangle, ArrowDown, ArrowUp, ArrowRightLeft } from 'lucide-react';
+import { Eye, Search, DollarSign, AlertCircle, AlertTriangle, ArrowDown, ArrowUp, ArrowRightLeft, Wallet, PlusCircle } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useConfirm } from '@/Components/app/confirm-dialog';
 import type { BankAccount, CashDrawerSession, PaginatedData, PageProps } from '@/types';
@@ -23,6 +23,8 @@ interface Summary {
     total_change_given: number;
     transfers_to_bank: number;
     transfers_from_bank: number;
+    petty_cash_expenses: number;
+    cash_receipts_total: number;
     cash_debt_payments_total: number;
     online_debt_payments_total: number;
     expected_cash: number;
@@ -64,6 +66,20 @@ export default function CashDrawerIndex({ sessions, filters, openSession, summar
     const [transferAmount, setTransferAmount] = useState('');
     const [transferNotes, setTransferNotes] = useState('');
     const [transferProcessing, setTransferProcessing] = useState(false);
+
+    // Expense modal
+    const [expenseDialogOpen, setExpenseDialogOpen] = useState(false);
+    const [expenseCategory, setExpenseCategory] = useState('');
+    const [expenseAmount, setExpenseAmount] = useState('');
+    const [expenseDescription, setExpenseDescription] = useState('');
+    const [expenseProcessing, setExpenseProcessing] = useState(false);
+
+    // Cash In modal
+    const [cashInDialogOpen, setCashInDialogOpen] = useState(false);
+    const [cashInCategory, setCashInCategory] = useState('');
+    const [cashInAmount, setCashInAmount] = useState('');
+    const [cashInDescription, setCashInDescription] = useState('');
+    const [cashInProcessing, setCashInProcessing] = useState(false);
 
     const closingNum = parseFloat(closingBalance) || 0;
     const difference = summary ? closingNum - summary.expected_cash : 0;
@@ -143,6 +159,32 @@ export default function CashDrawerIndex({ sessions, filters, openSession, summar
         );
     };
 
+    const handleExpenseSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        setExpenseProcessing(true);
+        router.post(
+            route('cash-drawer.expense'),
+            { category: expenseCategory, amount: expenseAmount, description: expenseDescription },
+            {
+                onSuccess: () => { setExpenseProcessing(false); setExpenseDialogOpen(false); setExpenseCategory(''); setExpenseAmount(''); setExpenseDescription(''); },
+                onError: () => setExpenseProcessing(false),
+            }
+        );
+    };
+
+    const handleCashInSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        setCashInProcessing(true);
+        router.post(
+            route('cash-drawer.cash-in'),
+            { category: cashInCategory, amount: cashInAmount, description: cashInDescription },
+            {
+                onSuccess: () => { setCashInProcessing(false); setCashInDialogOpen(false); setCashInCategory(''); setCashInAmount(''); setCashInDescription(''); },
+                onError: () => setCashInProcessing(false),
+            }
+        );
+    };
+
     const isOwner = openSession?.user_id === auth.user?.id;
 
     return (
@@ -182,6 +224,20 @@ export default function CashDrawerIndex({ sessions, filters, openSession, summar
                             <>
                                 <Button variant="outline" size="sm" asChild>
                                     <Link href={route('sales.create')}>Go to Sales</Link>
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => { setExpenseCategory(''); setExpenseAmount(''); setExpenseDescription(''); setExpenseDialogOpen(true); }}
+                                >
+                                    <Wallet className="mr-2 h-4 w-4" /> Record Expense
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => { setCashInCategory(''); setCashInAmount(''); setCashInDescription(''); setCashInDialogOpen(true); }}
+                                >
+                                    <PlusCircle className="mr-2 h-4 w-4" /> Cash In
                                 </Button>
                                 {isOwner && (
                                     <Button
@@ -409,6 +465,15 @@ export default function CashDrawerIndex({ sessions, filters, openSession, summar
                                         </p>
                                     </div>
                                 )}
+                                {summary.cash_receipts_total > 0 && (
+                                    <div className="rounded-md border p-3 text-center">
+                                        <p className="text-xs uppercase text-muted-foreground">Cash Receipts (In)</p>
+                                        <p className="text-lg font-bold text-teal-600">
+                                            <ArrowUp className="mr-1 inline h-4 w-4" />
+                                            {formatCurrency(summary.cash_receipts_total)}
+                                        </p>
+                                    </div>
+                                )}
                                 {summary.online_debt_payments_total > 0 && (
                                     <div className="rounded-md border p-3 text-center">
                                         <p className="text-xs uppercase text-muted-foreground">Debt Payments (Online)</p>
@@ -574,6 +639,130 @@ export default function CashDrawerIndex({ sessions, filters, openSession, summar
                             disabled={transferProcessing || !transferBankId || !transferAmount}
                         >
                             {transferProcessing ? 'Transferring...' : 'Transfer'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Record Expense Dialog */}
+            <Dialog open={expenseDialogOpen} onOpenChange={setExpenseDialogOpen}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Wallet className="h-5 w-5" /> Record Petty Cash Expense
+                        </DialogTitle>
+                    </DialogHeader>
+                    <form id="expense-form-idx" onSubmit={handleExpenseSubmit} className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="exp_cat">Category *</Label>
+                            <Select value={expenseCategory} onValueChange={setExpenseCategory}>
+                                <SelectTrigger id="exp_cat">
+                                    <SelectValue placeholder="Select category…" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="food">Food &amp; Beverages</SelectItem>
+                                    <SelectItem value="transport">Transportation</SelectItem>
+                                    <SelectItem value="supplies">Supplies</SelectItem>
+                                    <SelectItem value="maintenance">Maintenance</SelectItem>
+                                    <SelectItem value="utilities">Utilities</SelectItem>
+                                    <SelectItem value="other">Other</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="exp_amt">Amount *</Label>
+                            <Input
+                                id="exp_amt"
+                                type="number"
+                                min="0.01"
+                                step="0.01"
+                                value={expenseAmount}
+                                onChange={(e) => setExpenseAmount(e.target.value)}
+                                placeholder="0.00"
+                                required
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="exp_desc">Description *</Label>
+                            <Input
+                                id="exp_desc"
+                                value={expenseDescription}
+                                onChange={(e) => setExpenseDescription(e.target.value)}
+                                placeholder="What was this expense for?"
+                                required
+                            />
+                        </div>
+                    </form>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setExpenseDialogOpen(false)}>Cancel</Button>
+                        <Button
+                            type="submit"
+                            form="expense-form-idx"
+                            disabled={expenseProcessing || !expenseCategory || !expenseAmount || !expenseDescription}
+                        >
+                            {expenseProcessing ? 'Saving...' : 'Record Expense'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Cash In Dialog */}
+            <Dialog open={cashInDialogOpen} onOpenChange={setCashInDialogOpen}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <PlusCircle className="h-5 w-5" /> Cash In — Miscellaneous Receipt
+                        </DialogTitle>
+                    </DialogHeader>
+                    <p className="text-sm text-muted-foreground">
+                        Record non-sale cash received (e.g. ISP collections, service fees).
+                    </p>
+                    <form id="cashin-form-idx" onSubmit={handleCashInSubmit} className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="ci_cat">Category *</Label>
+                            <Select value={cashInCategory} onValueChange={setCashInCategory}>
+                                <SelectTrigger id="ci_cat">
+                                    <SelectValue placeholder="Select category…" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="isp_collection">ISP Collection</SelectItem>
+                                    <SelectItem value="wifi_vendo_collection">Wifi Vendo Collection</SelectItem>
+                                    <SelectItem value="other">Other</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="ci_amt">Amount *</Label>
+                            <Input
+                                id="ci_amt"
+                                type="number"
+                                min="0.01"
+                                step="0.01"
+                                value={cashInAmount}
+                                onChange={(e) => setCashInAmount(e.target.value)}
+                                placeholder="0.00"
+                                required
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="ci_desc">Description *</Label>
+                            <Input
+                                id="ci_desc"
+                                value={cashInDescription}
+                                onChange={(e) => setCashInDescription(e.target.value)}
+                                placeholder="e.g. ISP payment from John Doe"
+                                required
+                            />
+                        </div>
+                    </form>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setCashInDialogOpen(false)}>Cancel</Button>
+                        <Button
+                            type="submit"
+                            form="cashin-form-idx"
+                            disabled={cashInProcessing || !cashInCategory || !cashInAmount || !cashInDescription}
+                        >
+                            {cashInProcessing ? 'Saving...' : 'Record Cash In'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

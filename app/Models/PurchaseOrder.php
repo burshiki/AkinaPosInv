@@ -21,7 +21,6 @@ class PurchaseOrder extends Model
         'supplier_address',
         'status',
         'notes',
-        'rejection_notes',
         'subtotal',
         'shipping_fee',
         'total',
@@ -30,6 +29,7 @@ class PurchaseOrder extends Model
         'received_at',
         'created_by',
         'approved_by',
+        'payment_status',
     ];
 
     protected function casts(): array
@@ -42,6 +42,11 @@ class PurchaseOrder extends Model
             'approved_at' => 'datetime',
             'received_at' => 'datetime',
         ];
+    }
+
+    public function bill(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(Bill::class);
     }
 
     public function items(): HasMany
@@ -71,11 +76,11 @@ class PurchaseOrder extends Model
 
     public function isReceivable(): bool
     {
-        return in_array($this->status, ['ordered', 'partially_received']);
+        return in_array($this->status, ['approved', 'partially_received']);
     }
 
     public function isCancellable(): bool
     {
-        return in_array($this->status, ['draft', 'ordered']);
+        return in_array($this->status, ['draft', 'approved']);
     }
 }

@@ -23,11 +23,14 @@ class StoreSaleRequest extends FormRequest
             'amount_tendered'    => ['required_if:payment_method,cash',
                                      'nullable', 'numeric', 'min:0'],
             'discount_amount'    => ['nullable', 'numeric', 'min:0'],
+            'discount_type'      => ['nullable', 'in:amount,percent'],
             'notes'              => ['nullable', 'string', 'max:1000'],
             'items'              => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['required', 'exists:products,id'],
             'items.*.quantity'   => ['required', 'integer', 'min:1'],
             'items.*.unit_price' => ['required', 'numeric', 'min:0'],
+            'items.*.discount_amount' => ['nullable', 'numeric', 'min:0'],
+            'items.*.discount_type'   => ['nullable', 'in:amount,percent'],
         ];
     }
 }

@@ -41,6 +41,16 @@ const permissionLabels: Record<string, string> = {
     'users.create': 'Create Users',
     'users.edit': 'Edit Users',
     'users.delete': 'Delete Users',
+    'payroll.view': 'View Payroll',
+    'payroll.manage_employees': 'Manage Employees',
+    'payroll.attendance': 'Record Attendance',
+    'payroll.process': 'Compute Payroll & Payslips',
+    'payroll.approve': 'Approve & Mark Paid',
+    'payroll.reports': 'Payroll Reports',
+    // Leave module
+    'leave.view': 'View Leave Requests',
+    'leave.request': 'File Leave Requests',
+    'leave.approve': 'Approve / Reject Leave',
 };
 
 export default function UsersEdit({ user, allPermissions }: Props) {

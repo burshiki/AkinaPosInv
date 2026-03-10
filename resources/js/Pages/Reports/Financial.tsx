@@ -7,7 +7,7 @@ import { Label } from '@/Components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/Components/ui/table';
 import { Separator } from '@/Components/ui/separator';
 import { formatCurrency } from '@/lib/utils';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Download } from 'lucide-react';
 import { FormEvent, useState } from 'react';
 
 interface FinancialReportData {
@@ -77,6 +77,13 @@ export default function FinancialReport({ report, filters }: Props) {
                                 />
                             </div>
                             <Button type="submit">Generate Report</Button>
+                            {report && (
+                                <Button variant="outline" asChild>
+                                    <a href={route('exports.financial', { start_date: startDate, end_date: endDate })} download>
+                                        <Download className="mr-2 h-4 w-4" /> Export CSV
+                                    </a>
+                                </Button>
+                            )}
                         </form>
                     </CardContent>
                 </Card>

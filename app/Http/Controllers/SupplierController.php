@@ -52,9 +52,18 @@ class SupplierController extends Controller
             ->orderByDesc('updated_at')
             ->get();
 
+        $outstandingBills = $supplier->bills()
+            ->whereIn('status', ['unpaid', 'partial', 'overdue'])
+            ->orderBy('due_date')
+            ->get();
+
+        $totalOwed = $outstandingBills->sum('balance');
+
         return Inertia::render('Suppliers/Show', [
-            'supplier'   => $supplier,
-            'warranties' => $warranties,
+            'supplier'         => $supplier,
+            'warranties'       => $warranties,
+            'outstandingBills' => $outstandingBills,
+            'totalOwed'        => $totalOwed,
         ]);
     }
 

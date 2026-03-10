@@ -21,7 +21,7 @@ import type { PurchaseOrder, PaginatedData, Product, Supplier } from '@/types';
 
 const STATUS_LABELS: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
     draft:              { label: 'Draft',              variant: 'secondary' },
-    ordered:            { label: 'Ordered',            variant: 'default' },
+    approved:           { label: 'Approved',           variant: 'default' },
     partially_received: { label: 'Partial',            variant: 'outline' },
     received:           { label: 'Received',           variant: 'default' },
     cancelled:          { label: 'Cancelled',          variant: 'destructive' },
@@ -163,7 +163,7 @@ export default function PurchaseOrdersIndex({ orders, filters, products, supplie
                             <SelectContent>
                                 <SelectItem value="all">All Status</SelectItem>
                                 <SelectItem value="draft">Draft</SelectItem>
-                                <SelectItem value="ordered">Ordered</SelectItem>
+                                <SelectItem value="approved">Approved</SelectItem>
                                 <SelectItem value="partially_received">Partially Received</SelectItem>
                                 <SelectItem value="received">Received</SelectItem>
                                 <SelectItem value="cancelled">Cancelled</SelectItem>
@@ -185,7 +185,7 @@ export default function PurchaseOrdersIndex({ orders, filters, products, supplie
                                 <TableHead>Supplier</TableHead>
                                 <TableHead>Status</TableHead>
                                 <TableHead className="text-right">Total</TableHead>
-                                <TableHead>Ordered At</TableHead>
+                                <TableHead>Approved At</TableHead>
                                 <TableHead>Received At</TableHead>
                                 <TableHead className="w-12"></TableHead>
                             </TableRow>
@@ -218,7 +218,7 @@ export default function PurchaseOrdersIndex({ orders, filters, products, supplie
                                                 {formatCurrency(order.total)}
                                             </TableCell>
                                             <TableCell className="text-sm text-muted-foreground">
-                                                {order.ordered_at ? formatDate(order.ordered_at) : '—'}
+                                                {order.approved_at ? formatDate(order.approved_at) : '—'}
                                             </TableCell>
                                             <TableCell className="text-sm text-muted-foreground">
                                                 {order.received_at ? formatDate(order.received_at) : '—'}
@@ -228,14 +228,14 @@ export default function PurchaseOrdersIndex({ orders, filters, products, supplie
                                                     <Button variant="ghost" size="icon" className="h-8 w-8" title="View" asChild>
                                                         <Link href={route('purchase-orders.show', order.id)}><Eye className="h-4 w-4" /></Link>
                                                     </Button>
-                                                    {(order.status === 'ordered' || order.status === 'partially_received') && (
+                                                    {(order.status === 'approved' || order.status === 'partially_received') && (
                                                         <PermissionGate permission="purchasing.receive">
                                                             <Button variant="ghost" size="icon" className="h-8 w-8" title="Receive Items" asChild>
                                                                 <Link href={route('purchase-orders.receive', order.id)}><PackageCheck className="h-4 w-4" /></Link>
                                                             </Button>
                                                         </PermissionGate>
                                                     )}
-                                                    {(order.status === 'draft' || order.status === 'ordered') && (
+                                                    {(order.status === 'draft' || order.status === 'approved') && (
                                                         <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" title="Cancel" onClick={() => handleCancel(order)}>
                                                             <XCircle className="h-4 w-4" />
                                                         </Button>

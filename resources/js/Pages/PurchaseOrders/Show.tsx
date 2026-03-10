@@ -7,16 +7,22 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Separator } from '@/Components/ui/separator';
 import { PermissionGate } from '@/Components/app/permission-gate';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import { ArrowLeft, PackageCheck, ShoppingCart, XCircle } from 'lucide-react';
+import { ArrowLeft, PackageCheck, ShoppingCart, XCircle, FileText } from 'lucide-react';
 import { useConfirm } from '@/Components/app/confirm-dialog';
 import type { PurchaseOrder } from '@/types';
 
 const STATUS_LABELS: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
     draft:              { label: 'Draft',              variant: 'secondary' },
-    ordered:            { label: 'Ordered',            variant: 'default' },
+    approved:           { label: 'Approved',           variant: 'default' },
     partially_received: { label: 'Partially Received', variant: 'outline' },
     received:           { label: 'Received',           variant: 'default' },
     cancelled:          { label: 'Cancelled',          variant: 'destructive' },
+};
+
+const PAYMENT_STATUS: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
+    unpaid:         { label: 'Unpaid',         variant: 'destructive' },
+    partially_paid: { label: 'Partially Paid', variant: 'outline' },
+    paid:           { label: 'Paid',           variant: 'default' },
 };
 
 interface Props {
@@ -27,7 +33,7 @@ export default function PurchaseOrderShow({ order }: Props) {
     const confirm = useConfirm();
     const status = STATUS_LABELS[order.status] ?? { label: order.status, variant: 'secondary' as const };
 
-    const isCancellable = ['draft', 'ordered'].includes(order.status);
+    const isCancellable = ['draft', 'approved'].includes(order.status);
 
     const handleCancel = async () => {
         const ok = await confirm({
@@ -40,14 +46,14 @@ export default function PurchaseOrderShow({ order }: Props) {
         router.post(route('purchase-orders.cancel', order.id));
     };
 
-    const handleMarkOrdered = async () => {
+    const handleApprove = async () => {
         const ok = await confirm({
-            title: 'Mark as Ordered',
-            description: 'Mark this PO as ordered / placed with supplier?',
-            confirmLabel: 'Mark Ordered',
+            title: 'Approve Purchase Order',
+            description: 'Approve this PO and mark it ready for receiving?',
+            confirmLabel: 'Approve',
         });
         if (!ok) return;
-        router.post(route('purchase-orders.mark-ordered', order.id));
+        router.post(route('purchase-orders.approve', order.id));
     };
 
     return (
@@ -62,17 +68,17 @@ export default function PurchaseOrderShow({ order }: Props) {
                         </Link>
                     </Button>
                     <div className="flex gap-2">
-                        {/* Mark as Ordered — draft only */}
+                        {/* Approve — draft only */}
                         {order.status === 'draft' && (
-                            <PermissionGate permission="purchasing.manage">
-                                <Button variant="outline" onClick={handleMarkOrdered}>
-                                    <ShoppingCart className="mr-2 h-4 w-4" /> Mark as Ordered
+                            <PermissionGate permission="purchasing.approve">
+                                <Button variant="outline" onClick={handleApprove}>
+                                    <ShoppingCart className="mr-2 h-4 w-4" /> Approve PO
                                 </Button>
                             </PermissionGate>
                         )}
 
                         {/* Receive Items */}
-                        {(order.status === 'ordered' || order.status === 'partially_received') && (
+                        {(order.status === 'approved' || order.status === 'partially_received') && (
                             <PermissionGate permission="purchasing.receive">
                                 <Button asChild>
                                     <Link href={route('purchase-orders.receive', order.id)}>
@@ -131,10 +137,16 @@ export default function PurchaseOrderShow({ order }: Props) {
                                         <p className="text-sm">{order.creator.name}</p>
                                     </div>
                                 )}
-                                {order.ordered_at && (
+                                {order.approved_at && (
                                     <div>
-                                        <p className="text-sm font-medium text-muted-foreground">Ordered</p>
-                                        <p className="text-sm">{formatDate(order.ordered_at)}</p>
+                                        <p className="text-sm font-medium text-muted-foreground">Approved</p>
+                                        <p className="text-sm">{formatDate(order.approved_at)}</p>
+                                    </div>
+                                )}
+                                {order.approver && (
+                                    <div>
+                                        <p className="text-sm font-medium text-muted-foreground">Approved by</p>
+                                        <p className="text-sm">{order.approver.name}</p>
                                     </div>
                                 )}
                                 {order.received_at && (
@@ -218,6 +230,38 @@ export default function PurchaseOrderShow({ order }: Props) {
                         </div>
                     </CardContent>
                 </Card>
+
+                {/* Linked Bill */}
+                {order.bill && (() => {
+                    const ps = PAYMENT_STATUS[order.payment_status] ?? { label: order.payment_status, variant: 'secondary' as const };
+                    return (
+                        <Card>
+                            <CardHeader>
+                                <div className="flex items-center justify-between">
+                                    <CardTitle className="flex items-center gap-2 text-base">
+                                        <FileText className="h-4 w-4" /> Linked Bill
+                                    </CardTitle>
+                                    <Badge variant={ps.variant}>{ps.label}</Badge>
+                                </div>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <Link href={route('bills.show', order.bill.id)} className="font-mono text-primary hover:underline">
+                                            {order.bill.bill_number}
+                                        </Link>
+                                        <p className="text-sm text-muted-foreground mt-1">
+                                            Total: {formatCurrency(order.bill.total_amount)} &middot; Balance: {formatCurrency(order.bill.balance)}
+                                        </p>
+                                    </div>
+                                    <Button variant="outline" size="sm" asChild>
+                                        <Link href={route('bills.show', order.bill.id)}>View Bill</Link>
+                                    </Button>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    );
+                })()}
             </div>
         </AuthenticatedLayout>
     );

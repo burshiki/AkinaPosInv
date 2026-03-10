@@ -6,9 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { Separator } from '@/Components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/Components/ui/table';
 import { PermissionGate } from '@/Components/app/permission-gate';
-import { ArrowLeft, Pencil, ShieldCheck } from 'lucide-react';
-import { formatDate } from '@/lib/utils';
-import type { Supplier, Warranty } from '@/types';
+import { ArrowLeft, Pencil, ShieldCheck, Receipt } from 'lucide-react';
+import { formatCurrency, formatDate, formatDateOnly } from '@/lib/utils';
+import type { Supplier, Warranty, Bill } from '@/types';
 
 const WARRANTY_STATUS: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
     checking:         { label: 'Checking',         variant: 'outline' },
@@ -19,12 +19,20 @@ const WARRANTY_STATUS: Record<string, { label: string; variant: 'default' | 'sec
     pending:          { label: 'Pending Serial',   variant: 'outline' },
 };
 
+const BILL_STATUS: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
+    unpaid:  { label: 'Unpaid',  variant: 'destructive' },
+    partial: { label: 'Partial', variant: 'outline' },
+    overdue: { label: 'Overdue', variant: 'destructive' },
+};
+
 interface Props {
     supplier: Supplier & { purchase_orders_count: number };
     warranties: Warranty[];
+    outstandingBills: Bill[];
+    totalOwed: number;
 }
 
-export default function SupplierShow({ supplier, warranties }: Props) {
+export default function SupplierShow({ supplier, warranties, outstandingBills, totalOwed }: Props) {
     return (
         <AuthenticatedLayout header={supplier.name}>
             <Head title={supplier.name} />
@@ -93,6 +101,61 @@ export default function SupplierShow({ supplier, warranties }: Props) {
                             <p className="text-sm font-medium text-muted-foreground">Total Purchase Orders</p>
                             <p className="text-2xl font-bold">{supplier.purchase_orders_count}</p>
                         </div>
+                    </CardContent>
+                </Card>
+
+                {/* Outstanding Bills */}
+                <Card>
+                    <CardHeader>
+                        <div className="flex items-center justify-between">
+                            <CardTitle className="flex items-center gap-2 text-base">
+                                <Receipt className="h-4 w-4" />
+                                Outstanding Bills
+                                <Badge variant="secondary" className="ml-1">{outstandingBills.length}</Badge>
+                            </CardTitle>
+                            {totalOwed > 0 && (
+                                <span className="text-lg font-bold text-red-600">{formatCurrency(totalOwed)}</span>
+                            )}
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                        {outstandingBills.length === 0 ? (
+                            <p className="text-sm text-muted-foreground px-6 py-4">
+                                No outstanding bills for this supplier.
+                            </p>
+                        ) : (
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Bill #</TableHead>
+                                        <TableHead>Category</TableHead>
+                                        <TableHead>Due Date</TableHead>
+                                        <TableHead className="text-right">Total</TableHead>
+                                        <TableHead className="text-right">Balance</TableHead>
+                                        <TableHead>Status</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {outstandingBills.map((bill) => {
+                                        const cfg = BILL_STATUS[bill.status] ?? { label: bill.status, variant: 'secondary' as const };
+                                        return (
+                                            <TableRow key={bill.id}>
+                                                <TableCell>
+                                                    <Link href={route('bills.show', bill.id)} className="font-mono text-sm text-primary hover:underline">
+                                                        {bill.bill_number}
+                                                    </Link>
+                                                </TableCell>
+                                                <TableCell className="capitalize text-sm">{bill.category.replace(/_/g, ' ')}</TableCell>
+                                                <TableCell className="text-sm">{formatDateOnly(bill.due_date)}</TableCell>
+                                                <TableCell className="text-right text-sm">{formatCurrency(bill.total_amount)}</TableCell>
+                                                <TableCell className="text-right font-medium text-red-600">{formatCurrency(bill.balance)}</TableCell>
+                                                <TableCell><Badge variant={cfg.variant}>{cfg.label}</Badge></TableCell>
+                                            </TableRow>
+                                        );
+                                    })}
+                                </TableBody>
+                            </Table>
+                        )}
                     </CardContent>
                 </Card>
 

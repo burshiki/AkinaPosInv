@@ -26,6 +26,7 @@ export default function PurchaseOrderReceive({ order }: Props) {
     const { data, setData, post, processing, errors } = useForm({
         shipping_fee: '',
         notes: '',
+        bill_due_date: '',
         items: items.map((item) => ({
             id: item.id,
             quantity_received: String(item.quantity_ordered - item.quantity_received), // default: receive all remaining
@@ -133,6 +134,22 @@ export default function PurchaseOrderReceive({ order }: Props) {
                                         <p className="text-xs text-destructive">{errors.shipping_fee}</p>
                                     )}
                                 </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="bill_due_date">Bill Due Date</Label>
+                                    <Input
+                                        id="bill_due_date"
+                                        type="date"
+                                        value={data.bill_due_date}
+                                        onChange={(e) => setData('bill_due_date', e.target.value)}
+                                    />
+                                    <p className="text-xs text-muted-foreground">When fully received, a bill will be created with this due date.</p>
+                                    {errors.bill_due_date && (
+                                        <p className="text-xs text-destructive">{errors.bill_due_date}</p>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="notes">Notes (optional)</Label>
                                     <Textarea

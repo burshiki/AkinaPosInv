@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Exceptions\InsufficientBalanceException;
 use App\Models\BankAccount;
 use App\Models\CashDrawerExpense;
+use App\Models\CashDrawerReceipt;
 use App\Models\CashDrawerSession;
 use App\Models\CashDrawerTransfer;
 use App\Models\DebtPayment;
@@ -61,6 +62,9 @@ class CashDrawerController extends Controller
             $pettyExpenses = CashDrawerExpense::where('cash_drawer_session_id', $openSession->id)
                 ->sum('amount');
 
+            $cashReceiptsTotal = CashDrawerReceipt::where('cash_drawer_session_id', $openSession->id)
+                ->sum('amount');
+
             $cashDebtPayments = DebtPayment::where('cash_drawer_session_id', $openSession->id)
                 ->where('payment_method', 'cash')
                 ->sum('amount');
@@ -72,6 +76,7 @@ class CashDrawerController extends Controller
             $expectedCash = (float) $openSession->opening_balance
                 + (float) $cashSalesTotal
                 + (float) $cashDebtPayments
+                + (float) $cashReceiptsTotal
                 - (float) $totalChangeGiven
                 + (float) $transfersFromBank
                 - (float) $transfersToBank
@@ -84,6 +89,7 @@ class CashDrawerController extends Controller
                 'transfers_to_bank'          => round((float) $transfersToBank, 2),
                 'transfers_from_bank'        => round((float) $transfersFromBank, 2),
                 'petty_cash_expenses'        => round((float) $pettyExpenses, 2),
+                'cash_receipts_total'        => round((float) $cashReceiptsTotal, 2),
                 'cash_debt_payments_total'   => round((float) $cashDebtPayments, 2),
                 'online_debt_payments_total' => round((float) $onlineDebtPayments, 2),
                 'expected_cash'              => round($expectedCash, 2),
@@ -178,6 +184,9 @@ class CashDrawerController extends Controller
         $pettyExpenses = CashDrawerExpense::where('cash_drawer_session_id', $session->id)
             ->sum('amount');
 
+        $cashReceiptsTotal = CashDrawerReceipt::where('cash_drawer_session_id', $session->id)
+            ->sum('amount');
+
         $cashDebtPayments = DebtPayment::where('cash_drawer_session_id', $session->id)
             ->where('payment_method', 'cash')
             ->sum('amount');
@@ -189,6 +198,7 @@ class CashDrawerController extends Controller
         $expectedCash = (float) $session->opening_balance
             + (float) $cashSalesTotal
             + (float) $cashDebtPayments
+            + (float) $cashReceiptsTotal
             - (float) $totalChangeGiven
             + (float) $transfersFromBank
             - (float) $transfersToBank
@@ -203,6 +213,7 @@ class CashDrawerController extends Controller
                 'transfers_to_bank'          => round((float) $transfersToBank, 2),
                 'transfers_from_bank'        => round((float) $transfersFromBank, 2),
                 'petty_cash_expenses'        => round((float) $pettyExpenses, 2),
+                'cash_receipts_total'        => round((float) $cashReceiptsTotal, 2),
                 'cash_debt_payments_total'   => round((float) $cashDebtPayments, 2),
                 'online_debt_payments_total' => round((float) $onlineDebtPayments, 2),
                 'expected_cash'              => round($expectedCash, 2),
@@ -253,6 +264,9 @@ class CashDrawerController extends Controller
         $pettyExpenses = CashDrawerExpense::where('cash_drawer_session_id', $session->id)
             ->sum('amount');
 
+        $cashReceiptsTotal = CashDrawerReceipt::where('cash_drawer_session_id', $session->id)
+            ->sum('amount');
+
         $cashDebtPayments = DebtPayment::where('cash_drawer_session_id', $session->id)
             ->where('payment_method', 'cash')
             ->sum('amount');
@@ -264,6 +278,7 @@ class CashDrawerController extends Controller
         $expectedCash = (float) $session->opening_balance
             + (float) $cashSalesTotal
             + (float) $cashDebtPayments
+            + (float) $cashReceiptsTotal
             - (float) $totalChangeGiven
             + (float) $transfersFromBank
             - (float) $transfersToBank
@@ -376,23 +391,30 @@ class CashDrawerController extends Controller
             ->orderBy('created_at')
             ->get();
 
+        $receipts = CashDrawerReceipt::with('performer')
+            ->where('cash_drawer_session_id', $cashDrawer->id)
+            ->orderBy('created_at')
+            ->get();
+
         $debtPayments = DebtPayment::with(['customerDebt', 'receiver'])
             ->where('cash_drawer_session_id', $cashDrawer->id)
             ->orderBy('paid_at')
             ->get();
 
-        $cashSalesTotal    = $sales->where('payment_method', 'cash')->sum('total');
-        $totalChangeGiven  = $sales->sum('change_amount');
-        $totalSalesAll     = $sales->sum('total');
-        $transfersToBank   = $transfers->where('direction', 'drawer_to_bank')->sum('amount');
-        $transfersFromBank = $transfers->where('direction', 'bank_to_drawer')->sum('amount');
-        $pettyExpenses     = $expenses->sum('amount');
+        $cashSalesTotal     = $sales->where('payment_method', 'cash')->sum('total');
+        $totalChangeGiven   = $sales->sum('change_amount');
+        $totalSalesAll      = $sales->sum('total');
+        $transfersToBank    = $transfers->where('direction', 'drawer_to_bank')->sum('amount');
+        $transfersFromBank  = $transfers->where('direction', 'bank_to_drawer')->sum('amount');
+        $pettyExpenses      = $expenses->sum('amount');
+        $cashReceiptsTotal  = $receipts->sum('amount');
         $cashDebtPayments   = $debtPayments->where('payment_method', 'cash')->sum('amount');
         $onlineDebtPayments = $debtPayments->where('payment_method', 'online')->sum('amount');
 
         $expectedCash = (float) $cashDrawer->opening_balance
             + (float) $cashSalesTotal
             + (float) $cashDebtPayments
+            + (float) $cashReceiptsTotal
             - (float) $totalChangeGiven
             + (float) $transfersFromBank
             - (float) $transfersToBank
@@ -403,6 +425,7 @@ class CashDrawerController extends Controller
             'sales'        => $sales,
             'transfers'    => $transfers,
             'expenses'     => $expenses,
+            'receipts'     => $receipts,
             'debtPayments' => $debtPayments,
             'summary'      => [
                 'cash_sales_total'           => round((float) $cashSalesTotal, 2),
@@ -411,6 +434,7 @@ class CashDrawerController extends Controller
                 'transfers_to_bank'          => round((float) $transfersToBank, 2),
                 'transfers_from_bank'        => round((float) $transfersFromBank, 2),
                 'petty_cash_total'           => round((float) $pettyExpenses, 2),
+                'cash_receipts_total'        => round((float) $cashReceiptsTotal, 2),
                 'cash_debt_payments_total'   => round((float) $cashDebtPayments, 2),
                 'online_debt_payments_total' => round((float) $onlineDebtPayments, 2),
                 'expected_cash'              => round($expectedCash, 2),
@@ -444,5 +468,33 @@ class CashDrawerController extends Controller
         ]);
 
         return back()->with('success', 'Petty cash expense recorded: ' . number_format($validated['amount'], 2));
+    }
+
+    /**
+     * Record a miscellaneous cash receipt (cash in) to the open drawer.
+     */
+    public function cashIn(Request $request)
+    {
+        $validated = $request->validate([
+            'category'    => ['required', 'in:isp_collection,wifi_vendo_collection,other'],
+            'amount'      => ['required', 'numeric', 'min:0.01'],
+            'description' => ['required', 'string', 'max:500'],
+        ]);
+
+        $session = CashDrawerSession::open()->first();
+
+        if (!$session) {
+            return back()->with('error', 'No open cash drawer session found.');
+        }
+
+        CashDrawerReceipt::create([
+            'cash_drawer_session_id' => $session->id,
+            'performed_by'           => auth()->id(),
+            'category'               => $validated['category'],
+            'amount'                 => $validated['amount'],
+            'description'            => $validated['description'],
+        ]);
+
+        return back()->with('success', 'Cash receipt recorded: ' . number_format($validated['amount'], 2));
     }
 }

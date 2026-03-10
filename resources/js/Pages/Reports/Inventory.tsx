@@ -6,7 +6,7 @@ import { Badge } from '@/Components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/Components/ui/table';
 import { StockBadge } from '@/Components/app/stock-badge';
 import { formatCurrency } from '@/lib/utils';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Download } from 'lucide-react';
 
 interface InventoryItem {
     id: number;
@@ -42,11 +42,18 @@ export default function InventoryReport({ report }: Props) {
             <Head title="Inventory Report" />
 
             <div className="space-y-4">
-                <Button variant="outline" size="sm" asChild>
-                    <Link href={route('reports.index')}>
-                        <ArrowLeft className="mr-2 h-4 w-4" /> Back to Reports
-                    </Link>
-                </Button>
+                <div className="flex items-center justify-between">
+                    <Button variant="outline" size="sm" asChild>
+                        <Link href={route('reports.index')}>
+                            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Reports
+                        </Link>
+                    </Button>
+                    <Button variant="outline" size="sm" asChild>
+                        <a href={route('exports.inventory')} download>
+                            <Download className="mr-2 h-4 w-4" /> Export CSV
+                        </a>
+                    </Button>
+                </div>
 
                 {/* Summary */}
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

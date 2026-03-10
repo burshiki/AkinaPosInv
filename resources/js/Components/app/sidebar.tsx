@@ -19,6 +19,10 @@ import {
     ChevronLeft,
     ChevronRight,
     Boxes,
+    Wallet,
+    CalendarDays,
+    FileText,
+    Repeat,
 } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/Components/ui/button';
@@ -44,8 +48,14 @@ const navItems: NavItem[] = [
     { label: 'Customers', href: '/customers', icon: UserRound, permission: 'customers.view', active: 'customers.*' },
     { label: 'Suppliers', href: '/suppliers', icon: Truck, permission: 'suppliers.view', active: 'suppliers.*' },
     { label: 'Purchase Orders', href: '/purchase-orders', icon: ShoppingBag, permission: 'purchasing.view', active: 'purchase-orders.*' },
+    { label: 'Accounts Payable', href: '/bills', icon: FileText, permission: 'ap.view', active: 'bills.*' },
+    { label: 'Recurring Bills', href: '/recurring-bills', icon: Repeat, permission: 'ap.manage_recurring', active: 'recurring-bills.*' },
     { label: 'Warranties', href: '/warranties', icon: ShieldCheck, permission: 'warranties.view', active: 'warranties.*' },
     { label: 'Stock', href: '/stock', icon: Boxes, permission: 'stock.view', active: 'stock.*' },
+    { label: 'Payroll', href: '/payroll-periods', icon: Wallet, permission: 'payroll.view', active: 'payroll-periods.*' },
+    { label: 'Employees', href: '/employees', icon: UserRound, permission: 'payroll.view', active: 'employees.*' },
+    { label: 'Holidays', href: '/holidays', icon: CalendarDays, permission: 'payroll.view', active: 'holidays.*' },
+    { label: 'Leave', href: '/leave', icon: CalendarDays, permission: 'leave.view', active: 'leave.*' },
     { label: 'Reports', href: '/reports', icon: BarChart3, permission: 'reports.view', active: 'reports.*' },
     { label: 'Users', href: '/users', icon: Users, permission: 'users.view', active: 'users.*' },
 ];

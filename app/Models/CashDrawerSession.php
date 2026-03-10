@@ -48,6 +48,11 @@ class CashDrawerSession extends Model
         return $this->hasMany(Sale::class, 'cash_drawer_session_id');
     }
 
+    public function billPayments()
+    {
+        return $this->hasMany(BillPayment::class);
+    }
+
     public function scopeOpen($query)
     {
         return $query->where('status', 'open');

@@ -82,6 +82,13 @@ export default function SalesReport({ report, filters }: Props) {
                                 />
                             </div>
                             <Button type="submit">Generate Report</Button>
+                            {report && (
+                                <Button variant="outline" asChild>
+                                    <a href={route('exports.sales', { start_date: startDate, end_date: endDate })} download>
+                                        <Download className="mr-2 h-4 w-4" /> Export CSV
+                                    </a>
+                                </Button>
+                            )}
                         </form>
                     </CardContent>
                 </Card>

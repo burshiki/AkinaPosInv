@@ -16,7 +16,7 @@ import { StockBadge } from '@/Components/app/stock-badge';
 import { PermissionGate } from '@/Components/app/permission-gate';
 import { formatCurrency } from '@/lib/utils';
 import { useDebounce } from '@/hooks/use-debounce';
-import { Plus, Search, Eye, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Search, Eye, Trash2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useConfirm } from '@/Components/app/confirm-dialog';
 import type { Product, Category, PaginatedData } from '@/types';
@@ -32,7 +32,6 @@ export default function ProductsIndex({ products, categories, filters }: Props) 
     const [search, setSearch] = useState(filters.search ?? '');
     const debouncedSearch = useDebounce(search, 300);
     const [dialogOpen, setDialogOpen] = useState(false);
-    const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
     const form = useForm({
         name: '',
@@ -68,41 +67,14 @@ export default function ProductsIndex({ products, categories, filters }: Props) 
     };
 
     const openCreate = () => {
-        setEditingProduct(null);
         form.setData({ name: '', sku: '', barcode: '', description: '', category_id: '', cost_price: '', selling_price: '', stock_quantity: '0', low_stock_threshold: '10', is_assembled: false, is_component: false, has_warranty: false, warranty_months: '', is_active: true });
-        form.clearErrors();
-        setDialogOpen(true);
-    };
-
-    const openEdit = (product: Product) => {
-        setEditingProduct(product);
-        form.setData({
-            name: product.name,
-            sku: product.sku ?? '',
-            barcode: product.barcode ?? '',
-            description: product.description ?? '',
-            category_id: product.category_id ? String(product.category_id) : '',
-            cost_price: String(product.cost_price),
-            selling_price: String(product.selling_price),
-            stock_quantity: String(product.stock_quantity),
-            low_stock_threshold: String(product.low_stock_threshold),
-            is_assembled: product.is_assembled,
-            is_component: product.is_component,
-            has_warranty: product.has_warranty,
-            warranty_months: product.warranty_months ? String(product.warranty_months) : '',
-            is_active: product.is_active,
-        });
         form.clearErrors();
         setDialogOpen(true);
     };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (editingProduct) {
-            form.put(route('products.update', editingProduct.id), { onSuccess: () => setDialogOpen(false) });
-        } else {
-            form.post(route('products.store'), { onSuccess: () => setDialogOpen(false) });
-        }
+        form.post(route('products.store'), { onSuccess: () => setDialogOpen(false) });
     };
 
     const handleDelete = async (product: Product) => {
@@ -203,11 +175,6 @@ export default function ProductsIndex({ products, categories, filters }: Props) 
                                                 <Button variant="ghost" size="icon" className="h-8 w-8" title="View" asChild>
                                                     <Link href={route('products.show', product.id)}><Eye className="h-4 w-4" /></Link>
                                                 </Button>
-                                                <PermissionGate permission="inventory.edit">
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8" title="Edit" onClick={() => openEdit(product)}>
-                                                        <Pencil className="h-4 w-4" />
-                                                    </Button>
-                                                </PermissionGate>
                                                 <PermissionGate permission="inventory.delete">
                                                     <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" title="Delete" onClick={() => handleDelete(product)}>
                                                         <Trash2 className="h-4 w-4" />
@@ -228,7 +195,7 @@ export default function ProductsIndex({ products, categories, filters }: Props) 
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogContent className="max-w-2xl">
                     <DialogHeader>
-                        <DialogTitle>{editingProduct ? `Edit: ${editingProduct.name}` : 'New Product'}</DialogTitle>
+                        <DialogTitle>New Product</DialogTitle>
                     </DialogHeader>
                     <ScrollArea className="max-h-[70vh] pr-4">
                         <form id="product-form" onSubmit={handleSubmit} className="space-y-4 py-1">
@@ -340,7 +307,7 @@ export default function ProductsIndex({ products, categories, filters }: Props) 
                     <DialogFooter>
                         <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
                         <Button type="submit" form="product-form" disabled={form.processing}>
-                            {form.processing ? 'Saving...' : editingProduct ? 'Save Changes' : 'Create Product'}
+                            {form.processing ? 'Saving...' : 'Create Product'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

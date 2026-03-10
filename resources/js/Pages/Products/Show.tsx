@@ -7,7 +7,7 @@ import { Separator } from '@/Components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/Components/ui/table';
 import { StockBadge } from '@/Components/app/stock-badge';
 import { formatCurrency } from '@/lib/utils';
-import { ArrowLeft, Pencil, Puzzle } from 'lucide-react';
+import { ArrowLeft, Puzzle } from 'lucide-react';
 import type { Product } from '@/types';
 
 interface Props {
@@ -24,11 +24,6 @@ export default function ProductsShow({ product }: Props) {
                     <Button variant="outline" size="sm" asChild>
                         <Link href={route('products.index')}>
                             <ArrowLeft className="mr-2 h-4 w-4" /> Back
-                        </Link>
-                    </Button>
-                    <Button size="sm" asChild>
-                        <Link href={route('products.edit', product.id)}>
-                            <Pencil className="mr-2 h-4 w-4" /> Edit
                         </Link>
                     </Button>
                 </div>

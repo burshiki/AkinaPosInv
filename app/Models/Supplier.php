@@ -33,6 +33,16 @@ class Supplier extends Model
         return $this->hasMany(PurchaseOrder::class);
     }
 
+    public function bills(): HasMany
+    {
+        return $this->hasMany(Bill::class);
+    }
+
+    public function recurringBillTemplates(): HasMany
+    {
+        return $this->hasMany(RecurringBillTemplate::class);
+    }
+
     public function warranties(): HasMany
     {
         return $this->hasMany(\App\Models\Warranty::class);

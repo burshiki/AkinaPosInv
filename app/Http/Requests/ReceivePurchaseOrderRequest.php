@@ -18,6 +18,7 @@ class ReceivePurchaseOrderRequest extends FormRequest
             'items.*.id'                => ['required', 'exists:purchase_order_items,id'],
             'items.*.quantity_received' => ['required', 'integer', 'min:0'],
             'shipping_fee'              => ['nullable', 'numeric', 'min:0'],
+            'bill_due_date'             => ['nullable', 'date', 'after_or_equal:today'],
             'notes'                     => ['nullable', 'string'],
         ];
     }

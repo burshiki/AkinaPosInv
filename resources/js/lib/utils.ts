@@ -22,3 +22,13 @@ export function formatDate(
         timeZone: timezone,
     }).format(new Date(dateString));
 }
+
+export function formatDateOnly(
+    dateString: string,
+    timezone: string = 'Asia/Manila',
+): string {
+    return new Intl.DateTimeFormat('en-PH', {
+        dateStyle: 'medium',
+        timeZone: timezone,
+    }).format(new Date(dateString));
+}

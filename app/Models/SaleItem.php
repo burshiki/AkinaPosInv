@@ -20,6 +20,8 @@ class SaleItem extends Model
         'tax_rate',
         'tax_amount',
         'subtotal',
+        'discount_amount',
+        'discount_type',
     ];
 
     protected function casts(): array
@@ -31,6 +33,7 @@ class SaleItem extends Model
             'tax_rate' => 'decimal:2',
             'tax_amount' => 'decimal:2',
             'subtotal' => 'decimal:2',
+            'discount_amount' => 'decimal:2',
         ];
     }
 

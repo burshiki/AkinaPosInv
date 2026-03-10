@@ -63,22 +63,22 @@ class PurchaseOrderController extends Controller
 
     public function show(PurchaseOrder $purchaseOrder)
     {
-        $purchaseOrder->load(['items.product', 'creator', 'supplier']);
+        $purchaseOrder->load(['items.product', 'creator', 'supplier', 'bill']);
 
         return Inertia::render('PurchaseOrders/Show', [
             'order' => $purchaseOrder,
         ]);
     }
 
-    public function markOrdered(PurchaseOrder $purchaseOrder)
+    public function approve(PurchaseOrder $purchaseOrder)
     {
         if ($purchaseOrder->status !== 'draft') {
-            return back()->with('error', 'Only draft POs can be marked as ordered.');
+            return back()->with('error', 'Only draft purchase orders can be approved.');
         }
 
-        $this->service->markAsOrdered($purchaseOrder);
+        $this->service->approve($purchaseOrder, auth()->id());
 
-        return back()->with('success', 'Purchase order marked as ordered.');
+        return back()->with('success', 'Purchase order approved.');
     }
 
     public function receiveForm(PurchaseOrder $purchaseOrder)
@@ -105,7 +105,8 @@ class PurchaseOrderController extends Controller
             $purchaseOrder,
             $request->validated()['items'],
             (float) ($request->input('shipping_fee') ?? 0),
-            $request->input('notes')
+            $request->input('notes'),
+            $request->input('bill_due_date')
         );
 
         return redirect()->route('purchase-orders.show', $purchaseOrder)

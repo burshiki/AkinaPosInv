@@ -10,9 +10,9 @@ import { Label } from '@/Components/ui/label';
 import { Input } from '@/Components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
 import { formatCurrency } from '@/lib/utils';
-import { ArrowLeft, ArrowDown, ArrowUp, ReceiptText, Wallet } from 'lucide-react';
+import { ArrowLeft, ArrowDown, ArrowUp, ReceiptText, Wallet, PlusCircle } from 'lucide-react';
 import { useState } from 'react';
-import type { CashDrawerSession, CashDrawerTransfer, CashDrawerExpense, DebtPayment, Sale } from '@/types';
+import type { CashDrawerSession, CashDrawerTransfer, CashDrawerExpense, CashDrawerReceipt, DebtPayment, Sale } from '@/types';
 
 interface Summary {
     cash_sales_total: number;
@@ -21,6 +21,7 @@ interface Summary {
     transfers_to_bank: number;
     transfers_from_bank: number;
     petty_cash_total: number;
+    cash_receipts_total: number;
     cash_debt_payments_total: number;
     online_debt_payments_total: number;
     expected_cash: number;
@@ -31,6 +32,7 @@ interface Props {
     sales: Sale[];
     transfers: CashDrawerTransfer[];
     expenses: CashDrawerExpense[];
+    receipts: CashDrawerReceipt[];
     debtPayments: DebtPayment[];
     summary: Summary;
 }
@@ -48,12 +50,19 @@ function fmt(d: string) {
     return new Date(d).toLocaleString();
 }
 
-export default function CashDrawerShow({ session, sales, transfers, expenses, debtPayments, summary }: Props) {
+export default function CashDrawerShow({ session, sales, transfers, expenses, receipts, debtPayments, summary }: Props) {
     const difference = session.difference ?? 0;
 
     const [expenseDialogOpen, setExpenseDialogOpen] = useState(false);
+    const [cashInDialogOpen, setCashInDialogOpen] = useState(false);
 
     const expenseForm = useForm({
+        category: '',
+        amount: '',
+        description: '',
+    });
+
+    const cashInForm = useForm({
         category: '',
         amount: '',
         description: '',
@@ -66,6 +75,17 @@ export default function CashDrawerShow({ session, sales, transfers, expenses, de
             onSuccess: () => {
                 setExpenseDialogOpen(false);
                 expenseForm.reset();
+            },
+        });
+    }
+
+    function submitCashIn(e: React.FormEvent) {
+        e.preventDefault();
+        cashInForm.post(route('cash-drawer.cash-in'), {
+            preserveScroll: true,
+            onSuccess: () => {
+                setCashInDialogOpen(false);
+                cashInForm.reset();
             },
         });
     }
@@ -91,6 +111,11 @@ export default function CashDrawerShow({ session, sales, transfers, expenses, de
                         {session.status === 'open' && (
                             <Button variant="outline" size="sm" onClick={() => setExpenseDialogOpen(true)}>
                                 <Wallet className="mr-2 h-4 w-4" /> Record Expense
+                            </Button>
+                        )}
+                        {session.status === 'open' && (
+                            <Button variant="outline" size="sm" onClick={() => setCashInDialogOpen(true)}>
+                                <PlusCircle className="mr-2 h-4 w-4" /> Cash In
                             </Button>
                         )}
                         {session.status === 'closed' && (
@@ -231,6 +256,58 @@ export default function CashDrawerShow({ session, sales, transfers, expenses, de
                         </CardContent>
                     </Card>
                 )}
+
+                {/* Cash Receipts (Cash In) Card */}
+                <Card>
+                    <CardHeader>
+                        <div className="flex items-center justify-between">
+                            <CardTitle>Cash Receipts / Cash In ({receipts.length})</CardTitle>
+                            {receipts.length > 0 && (
+                                <span className="text-sm font-semibold text-teal-600">
+                                    Total: {formatCurrency(summary.cash_receipts_total)}
+                                </span>
+                            )}
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Time</TableHead>
+                                    <TableHead>Category</TableHead>
+                                    <TableHead>Description</TableHead>
+                                    <TableHead>By</TableHead>
+                                    <TableHead className="text-right">Amount</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {receipts.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
+                                            No cash receipts recorded
+                                        </TableCell>
+                                    </TableRow>
+                                ) : (
+                                    receipts.map((r) => (
+                                        <TableRow key={r.id}>
+                                            <TableCell className="text-sm">{fmt(r.created_at)}</TableCell>
+                                            <TableCell>
+                                                <Badge variant="outline" className="capitalize">{r.category.replace('_', ' ')}</Badge>
+                                            </TableCell>
+                                            <TableCell className="text-sm">{r.description}</TableCell>
+                                            <TableCell className="text-sm text-muted-foreground">
+                                                {r.performer?.name ?? '—'}
+                                            </TableCell>
+                                            <TableCell className="text-right font-medium text-teal-600">
+                                                + {formatCurrency(r.amount)}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
 
                 {/* Petty Cash Expenses Card */}
                 <Card>
@@ -453,6 +530,12 @@ export default function CashDrawerShow({ session, sales, transfers, expenses, de
                             <tr className="border-b">
                                 <td className="py-1 text-gray-600">Petty Cash Expenses</td>
                                 <td className="py-1 text-right font-medium">− {formatCurrency(summary.petty_cash_total)}</td>
+                            </tr>
+                        )}
+                        {summary.cash_receipts_total > 0 && (
+                            <tr className="border-b">
+                                <td className="py-1 text-gray-600">Cash Receipts (In)</td>
+                                <td className="py-1 text-right font-medium">+ {formatCurrency(summary.cash_receipts_total)}</td>
                             </tr>
                         )}
                         {summary.cash_debt_payments_total > 0 && (
@@ -733,6 +816,79 @@ export default function CashDrawerShow({ session, sales, transfers, expenses, de
                             </Button>
                             <Button type="submit" disabled={expenseForm.processing}>
                                 {expenseForm.processing ? 'Saving…' : 'Record Expense'}
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
+
+            {/* ── Cash In Dialog ─────────────────────────────────── */}
+            <Dialog open={cashInDialogOpen} onOpenChange={setCashInDialogOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <PlusCircle className="h-5 w-5" /> Cash In — Miscellaneous Receipt
+                        </DialogTitle>
+                    </DialogHeader>
+                    <p className="text-sm text-muted-foreground">
+                        Record non-sale cash received (e.g. ISP collections, service fees).
+                    </p>
+                    <form onSubmit={submitCashIn} className="space-y-4">
+                        <div className="space-y-1.5">
+                            <Label htmlFor="ci-category">Category</Label>
+                            <Select
+                                value={cashInForm.data.category}
+                                onValueChange={(v) => cashInForm.setData('category', v)}
+                            >
+                                <SelectTrigger id="ci-category">
+                                    <SelectValue placeholder="Select category…" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="isp_collection">ISP Collection</SelectItem>
+                                    <SelectItem value="wifi_vendo_collection">Wifi Vendo Collection</SelectItem>
+                                    <SelectItem value="other">Other</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            {cashInForm.errors.category && (
+                                <p className="text-xs text-destructive">{cashInForm.errors.category}</p>
+                            )}
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <Label htmlFor="ci-amount">Amount</Label>
+                            <Input
+                                id="ci-amount"
+                                type="number"
+                                step="0.01"
+                                min="0.01"
+                                placeholder="0.00"
+                                value={cashInForm.data.amount}
+                                onChange={(e) => cashInForm.setData('amount', e.target.value)}
+                            />
+                            {cashInForm.errors.amount && (
+                                <p className="text-xs text-destructive">{cashInForm.errors.amount}</p>
+                            )}
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <Label htmlFor="ci-description">Description</Label>
+                            <Input
+                                id="ci-description"
+                                placeholder="e.g. ISP payment from John Doe"
+                                value={cashInForm.data.description}
+                                onChange={(e) => cashInForm.setData('description', e.target.value)}
+                            />
+                            {cashInForm.errors.description && (
+                                <p className="text-xs text-destructive">{cashInForm.errors.description}</p>
+                            )}
+                        </div>
+
+                        <DialogFooter>
+                            <Button type="button" variant="outline" onClick={() => setCashInDialogOpen(false)}>
+                                Cancel
+                            </Button>
+                            <Button type="submit" disabled={cashInForm.processing}>
+                                {cashInForm.processing ? 'Saving…' : 'Record Cash In'}
                             </Button>
                         </DialogFooter>
                     </form>
