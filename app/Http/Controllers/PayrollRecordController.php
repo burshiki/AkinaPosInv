@@ -18,7 +18,7 @@ class PayrollRecordController extends Controller
     {
         $payrollRecord->load(['employee', 'payrollPeriod', 'payslip', 'computedBy']);
 
-        $bankAccounts     = BankAccount::where('is_active', true)->get(['id', 'name', 'type', 'balance', 'account_number']);
+        $bankAccounts     = BankAccount::where('is_active', true)->get(['id', 'name', 'bank_name', 'balance', 'account_number']);
         $openDrawerSession = CashDrawerSession::where('status', 'open')->latest()->first();
 
         return Inertia::render('Payroll/Records/Show', [

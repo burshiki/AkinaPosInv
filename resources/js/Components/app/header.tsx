@@ -8,7 +8,8 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/Components/ui/dropdown-menu';
-import { User, LogOut } from 'lucide-react';
+import { PermissionGate } from '@/Components/app/permission-gate';
+import { User, LogOut, Database } from 'lucide-react';
 import type { PageProps } from '@/types';
 
 interface HeaderProps {
@@ -41,6 +42,16 @@ export function Header({ title, children }: HeaderProps) {
                             </div>
                         </DropdownMenuLabel>
                         <DropdownMenuSeparator />
+                        <PermissionGate permission="users.view">
+                            <DropdownMenuItem
+                                onClick={() => { window.location.href = route('backup.download'); }}
+                                className="cursor-pointer"
+                            >
+                                <Database className="mr-2 h-4 w-4" />
+                                Backup Database
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                        </PermissionGate>
                         <DropdownMenuItem
                             onClick={() => router.post(route('logout'))}
                             className="cursor-pointer text-destructive"

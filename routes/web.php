@@ -30,6 +30,7 @@ use App\Http\Controllers\ProductVariantController;
 use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\LeaveController;
 use App\Http\Controllers\RecurringDeductionController;
+use App\Http\Controllers\BackupController;
 use App\Http\Controllers\BillController;
 use App\Http\Controllers\RecurringBillController;
 use Illuminate\Support\Facades\Route;
@@ -416,6 +417,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::resource('recurring-bills', RecurringBillController::class)
             ->except(['show']);
     });
+
+    // Database backup (admin only)
+    Route::get('backup/download', [BackupController::class, 'download'])
+        ->name('backup.download')
+        ->middleware('permission:users.view');
 });
 
 require __DIR__.'/auth.php';

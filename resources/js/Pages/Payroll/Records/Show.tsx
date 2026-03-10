@@ -150,7 +150,7 @@ export default function RecordShow({ record, bankAccounts, openDrawerSession }: 
                                         <Save className="mr-2 h-3.5 w-3.5" /> Save
                                     </Button>
                                 )}
-                                {record.status !== 'paid' && (
+                                {record.status === 'confirmed' && (
                                     <PermissionGate permission="payroll.process">
                                         <Button
                                             type="button"

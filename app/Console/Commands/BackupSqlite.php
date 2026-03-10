@@ -7,61 +7,67 @@ use Illuminate\Support\Facades\File;
 
 class BackupSqlite extends Command
 {
-    protected $signature = 'backup:sqlite
+    protected $signature = 'backup:mysql
                             {--path= : Destination directory for backups (default: storage/backups)}
                             {--keep=30 : Number of daily backups to retain}';
 
-    protected $description = 'Create a dated backup of the SQLite database file.';
+    protected $description = 'Create a dated mysqldump backup of the MySQL database.';
 
     public function handle(): int
     {
-        $dbPath = database_path('database.sqlite');
+        $connection = config('database.default');
+        $db = config("database.connections.{$connection}");
 
-        if (!File::exists($dbPath)) {
-            $this->error("SQLite database not found at: {$dbPath}");
+        if (($db['driver'] ?? '') !== 'mysql') {
+            $this->error("Default connection is not MySQL (got: " . ($db['driver'] ?? 'unknown') . ").");
             return self::FAILURE;
         }
 
-        $backupDir = $this->option('path') ?: storage_path('backups');
-        $keep = (int) $this->option('keep');
+        $host     = $db['host'] ?? '127.0.0.1';
+        $port     = (string) ($db['port'] ?? '3306');
+        $database = $db['database'];
+        $username = $db['username'];
+        $password = $db['password'] ?? '';
 
-        // Ensure backup directory exists
+        $backupDir = $this->option('path') ?: storage_path('backups');
+        $keep      = (int) $this->option('keep');
+
         if (!File::isDirectory($backupDir)) {
             File::makeDirectory($backupDir, 0755, true);
         }
 
-        $date = now()->format('Y-m-d_His');
-        $backupFile = $backupDir . DIRECTORY_SEPARATOR . "database_{$date}.sqlite";
+        $date       = now()->format('Y-m-d_His');
+        $backupFile = $backupDir . DIRECTORY_SEPARATOR . "database_{$date}.sql";
 
-        try {
-            // Use SQLite's backup API via VACUUM INTO for a consistent snapshot
-            // This is safer than file copy as it handles WAL mode properly
-            $pdo = new \PDO("sqlite:{$dbPath}");
-            $pdo->exec("VACUUM INTO '{$backupFile}'");
-            $pdo = null;
+        // Write a temporary MySQL options file to avoid exposing the password in the process list.
+        $cnf = tempnam(sys_get_temp_dir(), 'mybackup_');
+        file_put_contents($cnf, "[mysqldump]\npassword=" . str_replace('"', '\\"', $password) . "\n");
+        chmod($cnf, 0600);
 
-            $size = number_format(File::size($backupFile) / 1024, 1);
-            $this->info("Backup created: {$backupFile} ({$size} KB)");
+        $cmd = sprintf(
+            'mysqldump --defaults-extra-file=%s --host=%s --port=%s --user=%s --single-transaction --routines --triggers %s',
+            escapeshellarg($cnf),
+            escapeshellarg($host),
+            escapeshellarg($port),
+            escapeshellarg($username),
+            escapeshellarg($database)
+        );
 
-            // Prune old backups
-            $this->pruneOldBackups($backupDir, $keep);
+        exec($cmd . ' > ' . escapeshellarg($backupFile) . ' 2>&1', $output, $exitCode);
 
-            return self::SUCCESS;
-        } catch (\Exception $e) {
-            // Fallback to simple file copy if VACUUM INTO fails
-            $this->warn("VACUUM INTO failed ({$e->getMessage()}), falling back to file copy...");
+        @unlink($cnf);
 
-            try {
-                File::copy($dbPath, $backupFile);
-                $size = number_format(File::size($backupFile) / 1024, 1);
-                $this->info("Backup created (file copy): {$backupFile} ({$size} KB)");
-                $this->pruneOldBackups($backupDir, $keep);
-                return self::SUCCESS;
-            } catch (\Exception $e2) {
-                $this->error("Backup failed: {$e2->getMessage()}");
-                return self::FAILURE;
-            }
+        if ($exitCode !== 0) {
+            $this->error('mysqldump failed: ' . implode("\n", $output));
+            return self::FAILURE;
         }
+
+        $size = number_format(File::size($backupFile) / 1024, 1);
+        $this->info("Backup created: {$backupFile} ({$size} KB)");
+
+        $this->pruneOldBackups($backupDir, $keep);
+
+        return self::SUCCESS;
     }
 
     protected function pruneOldBackups(string $dir, int $keep): void
@@ -70,7 +76,7 @@ class BackupSqlite extends Command
             return;
         }
 
-        $files = collect(File::glob($dir . DIRECTORY_SEPARATOR . 'database_*.sqlite'))
+        $files = collect(File::glob($dir . DIRECTORY_SEPARATOR . 'database_*.sql'))
             ->sortDesc()
             ->values();
 
@@ -81,7 +87,7 @@ class BackupSqlite extends Command
         $toDelete = $files->slice($keep);
         foreach ($toDelete as $file) {
             File::delete($file);
-            $this->line("  Pruned old backup: " . basename($file));
+            $this->line('  Pruned old backup: ' . basename($file));
         }
 
         $this->info("Pruned {$toDelete->count()} old backup(s), keeping {$keep} most recent.");

@@ -8,8 +8,8 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-// Automated SQLite backup — runs daily at 2:00 AM
-Schedule::command('backup:sqlite')->dailyAt('02:00');
+// Automated MySQL backup — runs daily at 2:00 AM
+Schedule::command('backup:mysql')->dailyAt('02:00');
 
 // Generate recurring bills — runs daily at 6:00 AM
 Schedule::command('bills:generate-recurring')->dailyAt('06:00');
