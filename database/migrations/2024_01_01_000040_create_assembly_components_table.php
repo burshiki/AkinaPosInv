@@ -15,7 +15,7 @@ return new class extends Migration
             $table->integer('quantity_needed')->default(1);
             $table->timestamps();
 
-            $table->unique(['assembly_product_id', 'component_product_id']);
+            $table->unique(['assembly_product_id', 'component_product_id'], 'asm_components_product_ids_unique');
         });
     }
 

@@ -57,7 +57,7 @@ export default function BillShow({ bill }: Props) {
                         </Link>
                     </Button>
                     <div className="flex gap-2">
-                        {bill.isPayable !== false && ['unpaid', 'partially_paid'].includes(bill.status) && (
+                        {['unpaid', 'partially_paid'].includes(bill.status) && (
                             <PermissionGate permission="ap.pay">
                                 <Button asChild>
                                     <Link href={route('bills.pay', bill.id)}>

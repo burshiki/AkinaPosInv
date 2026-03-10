@@ -82,7 +82,7 @@ export default function RecurringBillEdit({ template, suppliers }: Props) {
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Category *</Label>
-                                    <Select value={form.data.category} onValueChange={(v) => form.setData('category', v)}>
+                                    <Select value={form.data.category} onValueChange={(v) => form.setData('category', v as typeof form.data.category)}>
                                         <SelectTrigger>
                                             <SelectValue placeholder="Select" />
                                         </SelectTrigger>
@@ -112,7 +112,7 @@ export default function RecurringBillEdit({ template, suppliers }: Props) {
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Frequency *</Label>
-                                    <Select value={form.data.frequency} onValueChange={(v) => form.setData('frequency', v)}>
+                                    <Select value={form.data.frequency} onValueChange={(v) => form.setData('frequency', v as typeof form.data.frequency)}>
                                         <SelectTrigger>
                                             <SelectValue placeholder="Select" />
                                         </SelectTrigger>

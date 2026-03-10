@@ -202,9 +202,7 @@ export default function BillsIndex({ bills, filters, totalOutstanding, totalOver
                     </Table>
                 </div>
 
-                {bills.last_page > 1 && (
-                    <Pagination links={bills.links} />
-                )}
+                <Pagination data={bills} />
             </div>
         </AuthenticatedLayout>
     );

@@ -158,9 +158,7 @@ export default function RecurringBillsIndex({ templates, filters }: Props) {
                     </Table>
                 </div>
 
-                {templates.last_page > 1 && (
-                    <Pagination links={templates.links} />
-                )}
+                <Pagination data={templates} />
             </div>
         </AuthenticatedLayout>
     );
