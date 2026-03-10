@@ -154,17 +154,19 @@ class SaleService
                     $lowStockProductIds[] = $product->id;
                 }
 
-                // Auto-create warranty record if product has warranty
+                // Auto-create one warranty record per unit sold
                 if ($product->has_warranty && $product->warranty_months) {
-                    Warranty::create([
-                        'sale_id'         => $sale->id,
-                        'sale_item_id'    => $saleItem->id,
-                        'product_id'      => $product->id,
-                        'receipt_number'  => $receiptNumber,
-                        'customer_name'   => $validated['customer_name'] ?? null,
-                        'warranty_months' => $product->warranty_months,
-                        'status'          => 'pending',
-                    ]);
+                    for ($unit = 0; $unit < $item['quantity']; $unit++) {
+                        Warranty::create([
+                            'sale_id'         => $sale->id,
+                            'sale_item_id'    => $saleItem->id,
+                            'product_id'      => $product->id,
+                            'receipt_number'  => $receiptNumber,
+                            'customer_name'   => $validated['customer_name'] ?? null,
+                            'warranty_months' => $product->warranty_months,
+                            'status'          => 'pending',
+                        ]);
+                    }
                 }
             }
 

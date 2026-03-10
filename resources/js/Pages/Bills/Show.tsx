@@ -220,7 +220,7 @@ export default function BillShow({ bill }: Props) {
                                                     <span className="text-xs text-muted-foreground">Check dated {formatDateOnly(payment.check_date)}</span>
                                                 )}
                                                 {payment.reference_number && `Ref: ${payment.reference_number}`}
-                                                {payment.bank_account && payment.bank_account.name}
+                                                {payment.bank_account && (payment.bank_account.bank_name || payment.bank_account.name)}
                                                 {!payment.check_number && !payment.check_date && !payment.reference_number && !payment.bank_account && '—'}
                                             </TableCell>
                                             <TableCell>{payment.payer?.name ?? '—'}</TableCell>

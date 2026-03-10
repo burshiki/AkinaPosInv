@@ -152,7 +152,7 @@ class ReportService
             return [
                 'id'             => $account->id,
                 'name'           => $account->name,
-                'type'           => $account->type,
+                'bank_name'      => $account->bank_name,
                 'balance'        => $account->balance,
                 'total_inflows'  => $totalIn,
                 'total_outflows' => $totalOut,

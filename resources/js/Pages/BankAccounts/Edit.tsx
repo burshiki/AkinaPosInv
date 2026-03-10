@@ -6,7 +6,6 @@ import { Label } from '@/Components/ui/label';
 import { Textarea } from '@/Components/ui/textarea';
 import { Checkbox } from '@/Components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
 import { ArrowLeft } from 'lucide-react';
 import type { BankAccount } from '@/types';
 
@@ -25,7 +24,7 @@ interface Props {
 export default function BankAccountEdit({ bankAccount }: Props) {
     const { data, setData, put, processing, errors } = useForm({
         name:           bankAccount.name,
-        type:           bankAccount.type,
+        bank_name:      bankAccount.bank_name ?? '',
         account_number: bankAccount.account_number ?? '',
         description:    bankAccount.description ?? '',
         is_active:      bankAccount.is_active,
@@ -37,8 +36,8 @@ export default function BankAccountEdit({ bankAccount }: Props) {
     };
 
     return (
-        <AuthenticatedLayout header={`Edit: ${bankAccount.name}`}>
-            <Head title={`Edit ${bankAccount.name}`} />
+        <AuthenticatedLayout header={`Edit: ${bankAccount.bank_name || bankAccount.name}`}>
+            <Head title={`Edit ${bankAccount.bank_name || bankAccount.name}`} />
 
             <div className="mx-auto max-w-lg space-y-4">
                 <Button variant="outline" size="sm" asChild>
@@ -64,18 +63,14 @@ export default function BankAccountEdit({ bankAccount }: Props) {
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="type">Type *</Label>
-                                <Select value={data.type} onValueChange={(v) => setData('type', v as BankAccount['type'])}>
-                                    <SelectTrigger>
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {ACCOUNT_TYPES.map((t) => (
-                                            <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                {errors.type && <p className="text-sm text-destructive">{errors.type}</p>}
+                                <Label htmlFor="bank_name">Bank Name</Label>
+                                <Input
+                                    id="bank_name"
+                                    value={data.bank_name}
+                                    onChange={(e) => setData('bank_name', e.target.value)}
+                                    placeholder="e.g. BDO, BPI, GCash…"
+                                />
+                                {errors.bank_name && <p className="text-sm text-destructive">{errors.bank_name}</p>}
                             </div>
 
                             <div className="space-y-2">

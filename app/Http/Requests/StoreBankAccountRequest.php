@@ -14,8 +14,8 @@ class StoreBankAccountRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:255'],
-            'type' => ['required', 'in:cash_drawer,gcash,maya,bdo,other'],
+            'name'           => ['required', 'string', 'max:255'],
+            'bank_name'      => ['nullable', 'string', 'max:100'],
             'account_number' => ['nullable', 'string', 'max:100'],
             'description' => ['nullable', 'string'],
             'balance' => ['nullable', 'numeric', 'min:0'],

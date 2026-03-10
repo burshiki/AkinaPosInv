@@ -6,21 +6,12 @@ import { Label } from '@/Components/ui/label';
 import { Textarea } from '@/Components/ui/textarea';
 import { Checkbox } from '@/Components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
 import { ArrowLeft } from 'lucide-react';
-
-const ACCOUNT_TYPES = [
-    { value: 'cash_drawer', label: 'Cash Drawer' },
-    { value: 'gcash',       label: 'GCash' },
-    { value: 'maya',        label: 'Maya' },
-    { value: 'bdo',         label: 'BDO' },
-    { value: 'other',       label: 'Other' },
-];
 
 export default function BankAccountCreate() {
     const { data, setData, post, processing, errors } = useForm({
         name:           '',
-        type:           'cash_drawer',
+        bank_name:      '',
         account_number: '',
         description:    '',
         balance:        '0',
@@ -61,18 +52,14 @@ export default function BankAccountCreate() {
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="type">Type *</Label>
-                                <Select value={data.type} onValueChange={(v) => setData('type', v)}>
-                                    <SelectTrigger>
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {ACCOUNT_TYPES.map((t) => (
-                                            <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                {errors.type && <p className="text-sm text-destructive">{errors.type}</p>}
+                                <Label htmlFor="bank_name">Bank Name</Label>
+                                <Input
+                                    id="bank_name"
+                                    value={data.bank_name}
+                                    onChange={(e) => setData('bank_name', e.target.value)}
+                                    placeholder="e.g. BDO, BPI, GCash…"
+                                />
+                                {errors.bank_name && <p className="text-sm text-destructive">{errors.bank_name}</p>}
                             </div>
 
                             <div className="space-y-2">

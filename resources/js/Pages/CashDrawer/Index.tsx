@@ -603,7 +603,7 @@ export default function CashDrawerIndex({ sessions, filters, openSession, summar
                                 <SelectContent>
                                     {bankAccounts.map((acc) => (
                                         <SelectItem key={acc.id} value={String(acc.id)}>
-                                            {acc.name} — {formatCurrency(acc.balance)}
+                                            {acc.bank_name || acc.name} — {formatCurrency(acc.balance)}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>

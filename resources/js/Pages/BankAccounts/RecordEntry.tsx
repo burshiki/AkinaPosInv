@@ -42,13 +42,13 @@ export default function RecordEntry({ bankAccount }: Props) {
             <div className="mx-auto max-w-lg space-y-4">
                 <Button variant="outline" size="sm" asChild>
                     <Link href={route('bank-accounts.show', bankAccount.id)}>
-                        <ArrowLeft className="mr-2 h-4 w-4" /> Back to {bankAccount.name}
+                        <ArrowLeft className="mr-2 h-4 w-4" /> Back to {bankAccount.bank_name || bankAccount.name}
                     </Link>
                 </Button>
 
                 <Card>
                     <CardHeader>
-                        <CardTitle>Record Entry - {bankAccount.name}</CardTitle>
+                        <CardTitle>Record Entry - {bankAccount.bank_name || bankAccount.name}</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <form onSubmit={handleSubmit} className="space-y-4">

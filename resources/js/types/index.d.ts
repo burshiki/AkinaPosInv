@@ -133,7 +133,7 @@ export interface SaleItem {
 export interface BankAccount {
     id: number;
     name: string;
-    type: 'cash_drawer' | 'gcash' | 'maya' | 'bdo' | 'other';
+    bank_name: string | null;
     account_number: string | null;
     description: string | null;
     balance: number;

@@ -609,7 +609,7 @@ export default function SalesCreate({ products, categories, bankAccounts, custom
                                         <SelectContent>
                                             {bankAccounts.map((acct) => (
                                                 <SelectItem key={acct.id} value={String(acct.id)}>
-                                                    {acct.name} ({formatCurrency(acct.balance)})
+                                                    {acct.bank_name || acct.name} ({formatCurrency(acct.balance)})
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>

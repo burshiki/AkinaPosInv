@@ -17,8 +17,8 @@ interface Props {
 
 export default function BankAccountsShow({ bankAccount, ledgerEntries }: Props) {
     return (
-        <AuthenticatedLayout header={`Account: ${bankAccount.name}`}>
-            <Head title={bankAccount.name} />
+        <AuthenticatedLayout header={`Account: ${bankAccount.bank_name || bankAccount.name}`}>
+            <Head title={bankAccount.bank_name || bankAccount.name} />
 
             <div className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -39,7 +39,7 @@ export default function BankAccountsShow({ bankAccount, ledgerEntries }: Props) 
                 <Card>
                     <CardContent className="flex items-center justify-between p-6">
                         <div>
-                            <h2 className="text-xl font-bold">{bankAccount.name}</h2>
+                            <h2 className="text-xl font-bold">{bankAccount.bank_name || bankAccount.name}</h2>
                             {bankAccount.account_number && (
                                 <p className="text-sm text-muted-foreground">{bankAccount.account_number}</p>
                             )}

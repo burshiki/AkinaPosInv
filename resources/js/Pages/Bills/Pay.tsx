@@ -97,7 +97,7 @@ export default function BillPay({ bill, bankAccounts, openSession }: Props) {
                                         <SelectContent>
                                             {bankAccounts.map((ba) => (
                                                 <SelectItem key={ba.id} value={String(ba.id)}>
-                                                    {ba.name} ({formatCurrency(ba.balance)})
+                                                    {ba.bank_name || ba.name} ({formatCurrency(ba.balance)})
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>

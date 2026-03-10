@@ -7,7 +7,6 @@ import { Input } from '@/Components/ui/input';
 import { Label } from '@/Components/ui/label';
 import { Textarea } from '@/Components/ui/textarea';
 import { Checkbox } from '@/Components/ui/checkbox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/Components/ui/dialog';
 import { PermissionGate } from '@/Components/app/permission-gate';
 import { formatCurrency } from '@/lib/utils';
@@ -21,16 +20,6 @@ interface Props {
     totalBalance: number;
 }
 
-const TYPE_LABELS: Record<string, string> = {
-    cash_drawer: 'Cash Drawer',
-    gcash:       'GCash',
-    maya:        'Maya',
-    bdo:         'BDO',
-    other:       'Other',
-};
-
-const ACCOUNT_TYPES = ['cash_drawer', 'gcash', 'maya', 'bdo', 'other'] as const;
-
 export default function BankAccountsIndex({ bankAccounts, totalBalance }: Props) {
     const confirm = useConfirm();
     const [dialogOpen, setDialogOpen] = useState(false);
@@ -38,7 +27,7 @@ export default function BankAccountsIndex({ bankAccounts, totalBalance }: Props)
 
     const form = useForm({
         name: '',
-        type: 'other',
+        bank_name: '',
         account_number: '',
         description: '',
         balance: '0',
@@ -47,7 +36,7 @@ export default function BankAccountsIndex({ bankAccounts, totalBalance }: Props)
 
     const openCreate = () => {
         setEditingAccount(null);
-        form.setData({ name: '', type: 'other', account_number: '', description: '', balance: '0', is_active: true });
+        form.setData({ name: '', bank_name: '', account_number: '', description: '', balance: '0', is_active: true });
         form.clearErrors();
         setDialogOpen(true);
     };
@@ -56,7 +45,7 @@ export default function BankAccountsIndex({ bankAccounts, totalBalance }: Props)
         setEditingAccount(account);
         form.setData({
             name: account.name,
-            type: account.type,
+            bank_name: account.bank_name ?? '',
             account_number: account.account_number ?? '',
             description: account.description ?? '',
             balance: String(account.balance),
@@ -80,8 +69,8 @@ export default function BankAccountsIndex({ bankAccounts, totalBalance }: Props)
         const ok = await confirm({
             title: hasHistory ? 'Deactivate Account' : 'Delete Account',
             description: hasHistory
-                ? `"${account.name}" has ledger history — it will be deactivated instead. Continue?`
-                : `Delete "${account.name}"?`,
+                ? `"${account.bank_name || account.name}" has ledger history — it will be deactivated instead. Continue?`
+                : `Delete "${account.bank_name || account.name}"?`,
             confirmLabel: hasHistory ? 'Deactivate' : 'Delete',
             variant: 'destructive',
         });
@@ -128,8 +117,7 @@ export default function BankAccountsIndex({ bankAccounts, totalBalance }: Props)
                         <Card key={account.id}>
                             <CardHeader className="pb-3">
                                 <div className="flex items-center justify-between">
-                                    <CardTitle className="text-lg">{account.name}</CardTitle>
-                                    <Badge variant="outline">{TYPE_LABELS[account.type] ?? account.type}</Badge>
+                                    <CardTitle className="text-lg">{account.bank_name || account.name}</CardTitle>
                                 </div>
                                 {account.account_number && (
                                     <p className="text-sm text-muted-foreground">{account.account_number}</p>
@@ -178,7 +166,7 @@ export default function BankAccountsIndex({ bankAccounts, totalBalance }: Props)
                                 <Card key={account.id} className="border-dashed">
                                     <CardHeader className="pb-3">
                                         <div className="flex items-center justify-between">
-                                            <CardTitle className="text-base">{account.name}</CardTitle>
+                                            <CardTitle className="text-base">{account.bank_name || account.name}</CardTitle>
                                             <Badge variant="secondary">Inactive</Badge>
                                         </div>
                                     </CardHeader>
@@ -207,7 +195,7 @@ export default function BankAccountsIndex({ bankAccounts, totalBalance }: Props)
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogContent className="max-w-md">
                     <DialogHeader>
-                        <DialogTitle>{editingAccount ? `Edit: ${editingAccount.name}` : 'New Bank Account'}</DialogTitle>
+                        <DialogTitle>{editingAccount ? `Edit: ${editingAccount.bank_name || editingAccount.name}` : 'New Bank Account'}</DialogTitle>
                     </DialogHeader>
                     <form id="bank-account-form" onSubmit={handleSubmit} className="space-y-4">
                         <div className="space-y-2">
@@ -216,18 +204,9 @@ export default function BankAccountsIndex({ bankAccounts, totalBalance }: Props)
                             {form.errors.name && <p className="text-sm text-destructive">{form.errors.name}</p>}
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="ba_type">Type *</Label>
-                            <Select value={form.data.type} onValueChange={(v) => form.setData('type', v)}>
-                                <SelectTrigger id="ba_type">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {ACCOUNT_TYPES.map((t) => (
-                                        <SelectItem key={t} value={t}>{TYPE_LABELS[t]}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            {form.errors.type && <p className="text-sm text-destructive">{form.errors.type}</p>}
+                            <Label htmlFor="ba_bank_name">Bank Name</Label>
+                            <Input id="ba_bank_name" value={form.data.bank_name} onChange={(e) => form.setData('bank_name', e.target.value)} placeholder="e.g. BDO, BPI, GCash…" />
+                            {form.errors.bank_name && <p className="text-sm text-destructive">{form.errors.bank_name}</p>}
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="ba_acctno">Account Number</Label>

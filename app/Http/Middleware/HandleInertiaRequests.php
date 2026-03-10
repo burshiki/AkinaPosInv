@@ -43,7 +43,7 @@ class HandleInertiaRequests extends Middleware
             'warrantyPendingCount' => fn () => $request->user()
                 ? Warranty::pending()->count()
                 : 0,
-            'poPendingApprovalCount' => fn () => $request->user() && $request->user()->hasPermissionTo('purchasing.approve')
+            'poPendingApprovalCount' => fn () => $request->user() && $request->user()->getAllPermissions()->contains('name', 'purchasing.approve')
                 ? PurchaseOrder::where('status', 'draft')->count()
                 : 0,
             'inventoryMode' => fn () => InventorySession::isActive(),

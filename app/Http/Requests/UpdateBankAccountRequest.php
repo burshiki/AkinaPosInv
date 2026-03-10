@@ -15,7 +15,7 @@ class UpdateBankAccountRequest extends FormRequest
     {
         return [
             'name'           => ['required', 'string', 'max:255'],
-            'type'           => ['required', 'in:cash_drawer,gcash,maya,bdo,other'],
+            'bank_name'      => ['nullable', 'string', 'max:100'],
             'account_number' => ['nullable', 'string', 'max:100'],
             'description'    => ['nullable', 'string'],
             'is_active'      => ['nullable', 'boolean'],

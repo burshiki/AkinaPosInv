@@ -191,7 +191,7 @@ export default function SaleReturn({ sale, returnedQuantities, bankAccounts }: P
                                             <SelectContent>
                                                 {bankAccounts.map(ba => (
                                                     <SelectItem key={ba.id} value={String(ba.id)}>
-                                                        {ba.name} ({ba.type})
+                                                        {ba.bank_name || ba.name}
                                                     </SelectItem>
                                                 ))}
                                             </SelectContent>

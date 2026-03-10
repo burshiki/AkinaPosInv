@@ -21,6 +21,7 @@ interface FinancialReportData {
     accounts: {
         id: number;
         name: string;
+        bank_name: string | null;
         type: string;
         balance: number;
         total_inflows: number;
@@ -136,8 +137,8 @@ export default function FinancialReport({ report, filters }: Props) {
                                     <TableBody>
                                         {report.accounts.map((account) => (
                                             <TableRow key={account.id}>
-                                                <TableCell className="font-medium">{account.name}</TableCell>
-                                                <TableCell className="capitalize">{account.type}</TableCell>
+                                                <TableCell className="font-medium">{account.bank_name || account.name}</TableCell>
+                                                <TableCell className="capitalize">{account.bank_name ? account.name : '—'}</TableCell>
                                                 <TableCell className="text-right text-green-600">
                                                     {formatCurrency(account.total_inflows)}
                                                 </TableCell>

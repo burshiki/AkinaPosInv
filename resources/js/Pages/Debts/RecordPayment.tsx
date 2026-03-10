@@ -116,7 +116,7 @@ export default function RecordPayment({ customerName, totalOutstanding, cashDraw
                                         <SelectContent>
                                             {bankAccounts.map((account) => (
                                                 <SelectItem key={account.id} value={String(account.id)}>
-                                                    {account.name} ({formatCurrency(account.balance)})
+                                                    {account.bank_name || account.name} ({formatCurrency(account.balance)})
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>
