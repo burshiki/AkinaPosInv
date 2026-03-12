@@ -12,13 +12,14 @@ import type { CustomerDebt } from '@/types';
 
 interface Props {
     customerName: string;
+    customerId: number | null;
     debts: CustomerDebt[];
     totalAmount: number;
     totalPaid: number;
     totalBalance: number;
 }
 
-export default function DebtsShow({ customerName, debts, totalAmount, totalPaid, totalBalance }: Props) {
+export default function DebtsShow({ customerName, customerId, debts, totalAmount, totalPaid, totalBalance }: Props) {
     const statusVariant = (status: string) => {
         switch (status) {
             case 'paid': return 'success' as const;

@@ -176,4 +176,77 @@ To avoid the server's IP changing after a reboot, assign a static IP:
 
 ---
 
-*Last updated: March 10, 2026*
+## Automated Task Scheduler (Windows Server)
+
+Laravel's scheduler handles automatic backups, recurring bill generation, and overdue bill detection. On Windows, use Task Scheduler to run it every minute.
+
+### What gets scheduled automatically
+
+| Time | Command | What it does |
+|------|---------|--------------|
+| Every minute | `schedule:run` | Dispatches all due scheduled tasks |
+| 2:00 AM daily | `backup:mysql` | Backs up MySQL to `storage/backups/`, keeps last 30 |
+| 6:00 AM daily | `bills:generate-recurring` | Creates bills from recurring templates |
+| 6:15 AM daily | `bills:mark-overdue` | Marks unpaid bills past due date as overdue |
+
+### Option A — Task Scheduler GUI
+
+1. Open **Task Scheduler** → **Create Task** (not Basic Task)
+2. **General tab:**
+   - Name: `AkinaPOS Laravel Scheduler`
+   - Check **"Run whether user is logged on or not"**
+   - Check **"Run with highest privileges"**
+3. **Triggers tab → New:**
+   - Begin the task: **On a schedule** → **Daily**, recur every `1` day
+   - Check **"Repeat task every: 1 minute"** for a duration of **Indefinitely**
+4. **Actions tab → New:**
+   - Action: **Start a program**
+   - Program/script: `C:\php\php.exe` *(adjust to your PHP path)*
+   - Add arguments: `artisan schedule:run`
+   - Start in: `C:\inetpub\wwwroot\AkinaPOSInv` *(adjust to your deploy path)*
+5. **Conditions tab:** Uncheck **"Start the task only if on AC power"**
+6. **Settings tab:** Check **"If the task is already running, do not start a new instance"**
+
+### Option B — PowerShell (run as Administrator)
+
+```powershell
+$action = New-ScheduledTaskAction `
+    -Execute "C:\php\php.exe" `
+    -Argument "artisan schedule:run" `
+    -WorkingDirectory "C:\inetpub\wwwroot\AkinaPOSInv"
+
+$trigger = New-ScheduledTaskTrigger `
+    -RepetitionInterval (New-TimeSpan -Minutes 1) `
+    -Once `
+    -At (Get-Date)
+
+$settings = New-ScheduledTaskSettingsSet `
+    -MultipleInstances IgnoreNew `
+    -ExecutionTimeLimit (New-TimeSpan -Minutes 0)
+
+Register-ScheduledTask `
+    -TaskName "AkinaPOS Laravel Scheduler" `
+    -Action $action `
+    -Trigger $trigger `
+    -Settings $settings `
+    -RunLevel Highest `
+    -Force
+```
+
+> Replace `C:\php\php.exe` and the working directory with your actual paths.
+
+### Verify it works
+
+```powershell
+cd C:\inetpub\wwwroot\AkinaPOSInv
+php artisan schedule:run
+```
+
+You should see output like:
+```
+Running [backup:mysql] ............. DONE
+```
+
+---
+
+*Last updated: March 11, 2026*

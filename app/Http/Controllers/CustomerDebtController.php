@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Customer;
 use App\Models\CustomerDebt;
 use Inertia\Inertia;
 
@@ -47,8 +48,11 @@ class CustomerDebtController extends Controller
 
         $bankAccounts = \App\Models\BankAccount::where('is_active', true)->get();
 
+        $customer = Customer::where('name', $customerName)->first();
+
         return Inertia::render('Debts/Show', [
             'customerName'  => $customerName,
+            'customerId'    => $customer?->id,
             'debts'         => $debts,
             'bankAccounts'  => $bankAccounts,
             'totalAmount'   => $debts->sum('total_amount'),

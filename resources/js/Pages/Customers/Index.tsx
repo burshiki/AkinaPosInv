@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Pagination } from '@/Components/ui/pagination';
 import { PermissionGate } from '@/Components/app/permission-gate';
 import { useDebounce } from '@/hooks/use-debounce';
-import { Plus, Search, Eye, Pencil, Trash2, CreditCard } from 'lucide-react';
+import { Plus, Search, Eye, Pencil, Trash2, CreditCard, Banknote } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useConfirm } from '@/Components/app/confirm-dialog';
 import type { Customer, PaginatedData } from '@/types';
@@ -29,6 +29,25 @@ export default function CustomersIndex({ customers, filters }: Props) {
     const debouncedSearch = useDebounce(search, 300);
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+
+    const [debtDialogOpen, setDebtDialogOpen] = useState(false);
+    const [debtCustomer, setDebtCustomer] = useState<Customer | null>(null);
+    const debtForm = useForm({ amount: '', due_date: '', notes: '' });
+
+    const openInitialDebt = (customer: Customer) => {
+        setDebtCustomer(customer);
+        debtForm.setData({ amount: '', due_date: '', notes: '' });
+        debtForm.clearErrors();
+        setDebtDialogOpen(true);
+    };
+
+    const handleDebtSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!debtCustomer) return;
+        debtForm.post(route('customers.initial-debt', debtCustomer.id), {
+            onSuccess: () => setDebtDialogOpen(false),
+        });
+    };
 
     const form = useForm({
         name: '',
@@ -182,7 +201,12 @@ export default function CustomersIndex({ customers, filters }: Props) {
                                                         <Link href={route('debts.show', customer.name)}><CreditCard className="h-4 w-4" /></Link>
                                                     </Button>
                                                 </PermissionGate>
-                                                <PermissionGate permission="customers.edit">
+                                                <PermissionGate permission="debts.create">
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8" title="Add Initial Debt" onClick={() => openInitialDebt(customer)}>
+                                                            <Banknote className="h-4 w-4" />
+                                                        </Button>
+                                                    </PermissionGate>
+                                                    <PermissionGate permission="customers.edit">
                                                     <Button variant="ghost" size="icon" className="h-8 w-8" title="Edit" onClick={() => openEdit(customer)}>
                                                         <Pencil className="h-4 w-4" />
                                                     </Button>
@@ -245,6 +269,60 @@ export default function CustomersIndex({ customers, filters }: Props) {
                         <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
                         <Button type="submit" form="customer-form" disabled={form.processing}>
                             {form.processing ? 'Saving...' : editingCustomer ? 'Save Changes' : 'Save Customer'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Initial Debt Dialog */}
+            <Dialog open={debtDialogOpen} onOpenChange={setDebtDialogOpen}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Add Initial Debt — {debtCustomer?.name}</DialogTitle>
+                    </DialogHeader>
+                    <p className="text-sm text-muted-foreground">
+                        Record an outstanding balance carried over from your previous POS system.
+                    </p>
+                    <form id="debt-form" onSubmit={handleDebtSubmit} className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="d_amount">Amount *</Label>
+                            <Input
+                                id="d_amount"
+                                type="number"
+                                step="0.01"
+                                min="0.01"
+                                placeholder="0.00"
+                                value={debtForm.data.amount}
+                                onChange={(e) => debtForm.setData('amount', e.target.value)}
+                            />
+                            {debtForm.errors.amount && <p className="text-sm text-destructive">{debtForm.errors.amount}</p>}
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="d_due_date">Due Date</Label>
+                            <Input
+                                id="d_due_date"
+                                type="date"
+                                value={debtForm.data.due_date}
+                                onChange={(e) => debtForm.setData('due_date', e.target.value)}
+                            />
+                            {debtForm.errors.due_date && <p className="text-sm text-destructive">{debtForm.errors.due_date}</p>}
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="d_notes">Notes</Label>
+                            <Textarea
+                                id="d_notes"
+                                placeholder="Initial balance migrated from previous POS"
+                                value={debtForm.data.notes}
+                                onChange={(e) => debtForm.setData('notes', e.target.value)}
+                                rows={2}
+                            />
+                            {debtForm.errors.notes && <p className="text-sm text-destructive">{debtForm.errors.notes}</p>}
+                        </div>
+                    </form>
+                    <DialogFooter>
+                        <Button type="button" variant="outline" onClick={() => setDebtDialogOpen(false)}>Cancel</Button>
+                        <Button type="submit" form="debt-form" disabled={debtForm.processing}>
+                            {debtForm.processing ? 'Saving...' : 'Add Debt'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

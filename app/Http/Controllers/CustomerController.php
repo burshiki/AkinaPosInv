@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreCustomerRequest;
 use App\Http\Requests\UpdateCustomerRequest;
 use App\Models\Customer;
+use App\Models\CustomerDebt;
 use App\Models\Sale;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -107,5 +108,29 @@ class CustomerController extends Controller
 
         return redirect()->route('customers.index')
             ->with('success', 'Customer deleted.');
+    }
+
+    public function storeInitialDebt(Request $request, Customer $customer)
+    {
+        $validated = $request->validate([
+            'amount'   => ['required', 'numeric', 'min:0.01'],
+            'due_date' => ['nullable', 'date'],
+            'notes'    => ['nullable', 'string', 'max:500'],
+        ]);
+
+        CustomerDebt::create([
+            'customer_name'  => $customer->name,
+            'customer_phone' => $customer->phone,
+            'sale_id'        => null,
+            'total_amount'   => $validated['amount'],
+            'paid_amount'    => 0,
+            'balance'        => $validated['amount'],
+            'status'         => 'unpaid',
+            'due_date'       => $validated['due_date'] ?? null,
+            'notes'          => $validated['notes'] ?? 'Initial balance migrated from previous POS',
+        ]);
+
+        return redirect()->back()
+            ->with('success', "Initial debt of {$validated['amount']} added for {$customer->name}.");
     }
 }

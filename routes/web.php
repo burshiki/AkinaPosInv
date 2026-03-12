@@ -190,6 +190,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('customers/quick', [CustomerController::class, 'quickStore'])
             ->name('customers.quick-store')
             ->middleware('permission:customers.create');
+        Route::post('customers/{customer}/initial-debt', [CustomerController::class, 'storeInitialDebt'])
+            ->name('customers.initial-debt')
+            ->middleware('permission:debts.create');
         Route::resource('customers', CustomerController::class);
     });
 

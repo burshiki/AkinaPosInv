@@ -26,7 +26,7 @@ class DebtPaymentController extends Controller
         }
 
         $cashDrawerOpen = CashDrawerSession::open()->exists();
-        $onlineAccounts = BankAccount::where('type', '!=', 'cash_drawer')->where('is_active', true)->get();
+        $onlineAccounts = BankAccount::where('is_active', true)->get();
 
         return Inertia::render('Debts/RecordPayment', [
             'customerName'     => $customerName,
