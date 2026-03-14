@@ -17,6 +17,8 @@ class AttendanceRecord extends Model
     protected function casts(): array
     {
         return [
+            'days_present'   => 'decimal:2',
+            'days_absent'    => 'decimal:2',
             'overtime_hours' => 'decimal:2',
             'late_deduction' => 'decimal:2',
         ];

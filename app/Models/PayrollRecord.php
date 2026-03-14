@@ -40,6 +40,8 @@ class PayrollRecord extends Model
             'total_deductions' => 'decimal:2',
             'net_pay' => 'decimal:2',
             'basic_salary_snapshot' => 'decimal:2',
+            'days_present'   => 'decimal:2',
+            'days_absent'    => 'decimal:2',
             'overtime_hours' => 'decimal:2',
             'paid_at' => 'datetime',
             'disbursement_id' => 'integer',

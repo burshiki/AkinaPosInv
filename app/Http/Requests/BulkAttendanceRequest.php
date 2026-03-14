@@ -16,8 +16,8 @@ class BulkAttendanceRequest extends FormRequest
         return [
             'attendance'                                       => ['required', 'array', 'min:1'],
             'attendance.*.employee_id'                         => ['required', 'exists:employees,id'],
-            'attendance.*.days_present'                        => ['required', 'integer', 'min:0', 'max:31'],
-            'attendance.*.days_absent'                         => ['required', 'integer', 'min:0', 'max:31'],
+            'attendance.*.days_present'                        => ['required', 'numeric', 'min:0', 'max:31'],
+            'attendance.*.days_absent'                         => ['required', 'numeric', 'min:0', 'max:31'],
             'attendance.*.days_late'                           => ['nullable', 'integer', 'min:0'],
             'attendance.*.overtime_hours'                      => ['nullable', 'numeric', 'min:0'],
             'attendance.*.late_deduction'                      => ['nullable', 'numeric', 'min:0'],
