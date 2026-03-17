@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/Components/ui/table';
 import { PermissionGate } from '@/Components/app/permission-gate';
 import { useConfirm } from '@/Components/app/confirm-dialog';
-import { ArrowLeft, Calculator, Lock, ClipboardList, FileText, Printer, Trash2 } from 'lucide-react';
+import { ArrowLeft, Calculator, Lock, LockOpen, ClipboardList, FileText, Printer, Trash2 } from 'lucide-react';
 import { formatDateOnly } from '@/lib/utils';
 import type { PayrollPeriod, PayrollRecord } from '@/types';
 
@@ -30,6 +30,11 @@ export default function PeriodShow({ period }: Props) {
     const handleLock = async () => {
         const ok = await confirm({ title: 'Lock Period', description: 'Lock this period? Records will no longer be editable.', confirmLabel: 'Lock', variant: 'destructive' });
         if (ok) router.post(route('payroll-periods.lock', period.id));
+    };
+
+    const handleUnlock = async () => {
+        const ok = await confirm({ title: 'Unlock Period', description: 'Unlock this period? All confirmed records will return to draft and become editable again.', confirmLabel: 'Unlock', variant: 'destructive' });
+        if (ok) router.post(route('payroll-periods.unlock', period.id));
     };
 
     const handleDelete = async () => {
@@ -138,6 +143,13 @@ ${row('Total Deductions', n(r.total_deductions), true)}
                             <Button variant="outline" size="sm" onClick={printAllPayslips}>
                                 <Printer className="mr-2 h-4 w-4" /> Print All Payslips
                             </Button>
+                        )}
+                        {period.status === 'locked' && (
+                            <PermissionGate permission="payroll.approve">
+                                <Button variant="outline" size="sm" onClick={handleUnlock}>
+                                    <LockOpen className="mr-2 h-4 w-4" /> Unlock
+                                </Button>
+                            </PermissionGate>
                         )}
                         {period.status === 'draft' && (
                             <>

@@ -129,6 +129,7 @@ class PayrollRecordController extends Controller
             'pagibig_employer'       => round($pagibigEr, 2),
             'other_deductions'       => round($other, 2),
             'cash_advance'           => round($cashAdvance, 2),
+            'loan_deduction'         => round($loanDeduction, 2),
             'other_deductions_notes' => $v['other_deductions_notes'] ?? null,
             'total_deductions'       => round($totalDeductions, 2),
             'net_pay'                => round($netPay, 2),

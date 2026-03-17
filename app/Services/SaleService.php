@@ -164,7 +164,7 @@ class SaleService
                             'receipt_number'  => $receiptNumber,
                             'customer_name'   => $validated['customer_name'] ?? null,
                             'warranty_months' => $product->warranty_months,
-                            'status'          => 'pending',
+                            'status'          => 'pending_serial',
                         ]);
                     }
                 }

@@ -10,6 +10,7 @@ class Warranty extends Model
     use HasFactory;
 
     protected $fillable = [
+        'parent_warranty_id',
         'sale_id',
         'sale_item_id',
         'product_id',
@@ -17,21 +18,17 @@ class Warranty extends Model
         'customer_name',
         'warranty_months',
         'serial_number',
+        'activated_at',
         'expires_at',
         'status',
         'notes',
-        'check_reason',
-        'supplier_id',
-        'tracking_number',
-        'resolution_type',
-        'received_serial_number',
-        'received_notes',
     ];
 
     protected function casts(): array
     {
         return [
             'warranty_months' => 'integer',
+            'activated_at'    => 'datetime',
             'expires_at'      => 'date',
         ];
     }
@@ -53,16 +50,33 @@ class Warranty extends Model
         return $this->belongsTo(Product::class);
     }
 
-    public function supplier()
+    public function parentWarranty()
     {
-        return $this->belongsTo(Supplier::class);
+        return $this->belongsTo(Warranty::class, 'parent_warranty_id');
+    }
+
+    public function childWarranty()
+    {
+        return $this->hasOne(Warranty::class, 'parent_warranty_id');
+    }
+
+    public function claims()
+    {
+        return $this->hasMany(WarrantyClaim::class)->orderByDesc('created_at');
+    }
+
+    public function activeClaim()
+    {
+        return $this->hasOne(WarrantyClaim::class)
+            ->whereIn('status', ['open', 'confirmed', 'in_repair'])
+            ->latestOfMany();
     }
 
     /* ── Scopes ── */
 
     public function scopePending($query)
     {
-        return $query->where('status', 'pending');
+        return $query->where('status', 'pending_serial');
     }
 
     public function scopeActive($query)
@@ -70,10 +84,17 @@ class Warranty extends Model
         return $query->where('status', 'active');
     }
 
-    public function scopeExpired($query)
+    /* ── Helpers ── */
+
+    public function isExpired(): bool
     {
-        return $query->where('status', 'expired')->orWhere(function ($q) {
-            $q->where('status', 'active')->where('expires_at', '<', now()->toDateString());
-        });
+        return $this->expires_at !== null && $this->expires_at->isPast();
+    }
+
+    public function hasActiveClaim(): bool
+    {
+        return $this->claims()
+            ->whereIn('status', ['open', 'confirmed', 'in_repair'])
+            ->exists();
     }
 }

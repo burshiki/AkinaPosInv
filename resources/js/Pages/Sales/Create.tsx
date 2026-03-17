@@ -515,7 +515,18 @@ export default function SalesCreate({ products, categories, bankAccounts, custom
                                                 <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => updateQuantity(item.product.id, item.quantity - 1)}>
                                                     <Minus className="h-3 w-3" />
                                                 </Button>
-                                                <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
+                                                <input
+                                                    type="number"
+                                                    min={1}
+                                                    max={item.product.stock_quantity}
+                                                    value={item.quantity}
+                                                    onChange={(e) => {
+                                                        const val = parseInt(e.target.value, 10);
+                                                        if (!isNaN(val)) updateQuantity(item.product.id, val);
+                                                    }}
+                                                    onFocus={(e) => e.target.select()}
+                                                    className="w-14 h-7 text-center text-sm font-medium border rounded-md bg-background focus:outline-none focus:ring-1 focus:ring-ring [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                />
                                                 <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => updateQuantity(item.product.id, item.quantity + 1)}>
                                                     <Plus className="h-3 w-3" />
                                                 </Button>

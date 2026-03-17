@@ -63,6 +63,8 @@ export default function PayslipPrint({ payslip }: Props) {
                         <div>Pag-IBIG</div><div className="text-right font-mono">{fmt(record.pagibig_employee)}</div>
                         <div>Withholding Tax</div><div className="text-right font-mono">{fmt(record.bir_withholding_tax)}</div>
                         {Number(record.late_deduction) > 0 && <><div>Late Deduction</div><div className="text-right font-mono">{fmt(record.late_deduction)}</div></>}
+                        {Number(record.cash_advance) > 0 && <><div>Cash Advance</div><div className="text-right font-mono">{fmt(record.cash_advance)}</div></>}
+                        {Number(record.loan_deduction) > 0 && <><div>Loan Deduction</div><div className="text-right font-mono">{fmt(record.loan_deduction)}</div></>}
                         {Number(record.other_deductions) > 0 && <><div>Other</div><div className="text-right font-mono">{fmt(record.other_deductions)}</div></>}
                         <div className="font-bold border-t pt-1 mt-1">Total Deductions</div>
                         <div className="text-right font-mono font-bold border-t pt-1 mt-1">{fmt(record.total_deductions)}</div>

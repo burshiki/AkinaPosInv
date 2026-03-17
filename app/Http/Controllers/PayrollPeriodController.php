@@ -85,6 +85,17 @@ class PayrollPeriodController extends Controller
         }
     }
 
+    public function unlock(PayrollPeriod $payrollPeriod)
+    {
+        try {
+            $this->payrollService->unlockPeriod($payrollPeriod);
+
+            return back()->with('success', 'Payroll period unlocked and returned to draft.');
+        } catch (\RuntimeException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+    }
+
     public function lock(PayrollPeriod $payrollPeriod)
     {
         try {

@@ -262,6 +262,23 @@ class PayrollService
         return $period->fresh();
     }
 
+    public function unlockPeriod(PayrollPeriod $period): PayrollPeriod
+    {
+        if ($period->status !== 'locked') {
+            throw new \RuntimeException('Only locked periods can be unlocked.');
+        }
+
+        $period->update([
+            'status'      => 'draft',
+            'approved_by' => null,
+            'approved_at' => null,
+        ]);
+
+        $period->payrollRecords()->where('status', 'confirmed')->update(['status' => 'draft']);
+
+        return $period->fresh();
+    }
+
     public function markPeriodPaid(PayrollPeriod $period, User $operator): PayrollPeriod
     {
         if ($period->status !== 'locked') {

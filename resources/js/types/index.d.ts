@@ -61,8 +61,41 @@ export interface AssemblyComponent {
     component_product?: Product;
 }
 
+export interface WarrantyBatchRow {
+    warranty_id:   number;
+    serial_number: string;
+    notes:         string;
+    selected:      boolean;
+}
+
+export interface WarrantyClaim {
+    id: number;
+    warranty_id: number;
+    claim_number: string;
+    issue_description: string | null;
+    status: 'open' | 'confirmed' | 'in_repair' | 'resolved' | 'no_defect';
+    resolution_type: 'repair' | 'replacement' | 'refund' | null;
+    supplier_id: number | null;
+    supplier?: Supplier;
+    tracking_number: string | null;
+    received_serial_number: string | null;
+    resolution_notes: string | null;
+    resolved_at: string | null;
+    // Defective unit tracking (only set for from-stock replacements)
+    defective_status: 'pending' | 'sent' | 'received' | null;
+    defective_supplier_id: number | null;
+    defective_supplier?: Supplier;
+    defective_tracking_number: string | null;
+    defective_received_at: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
 export interface Warranty {
     id: number;
+    parent_warranty_id: number | null;
+    parent_warranty?: Warranty;
+    child_warranty?: Warranty;
     sale_id: number;
     sale_item_id: number;
     product_id: number;
@@ -70,18 +103,14 @@ export interface Warranty {
     customer_name: string | null;
     warranty_months: number;
     serial_number: string | null;
+    activated_at: string | null;
     expires_at: string | null;
-    status: 'pending' | 'active' | 'checking' | 'confirmed' | 'replacement_requested' | 'sent_to_supplier' | 'replaced' | 'replacement_received' | 'repair_received' | 'refunded' | 'expired';
+    status: 'pending_serial' | 'active' | 'replaced' | 'void';
     notes: string | null;
-    check_reason: string | null;
-    supplier_id: number | null;
-    supplier?: Supplier;
-    tracking_number: string | null;
-    resolution_type: 'repair' | 'replacement' | 'refund' | null;
-    received_serial_number: string | null;
-    received_notes: string | null;
     product?: Product;
     sale?: Sale;
+    claims?: WarrantyClaim[];
+    open_claims_count?: number;
     created_at: string;
     updated_at: string;
 }

@@ -19,6 +19,7 @@ use App\Http\Controllers\CashDrawerController;
 use App\Http\Controllers\SaleReturnController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WarrantyController;
+use App\Http\Controllers\WarrantyClaimController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\PayrollPeriodController;
 use App\Http\Controllers\AttendanceController;
@@ -247,26 +248,43 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Warranty module
     Route::middleware('permission:warranties.view')->group(function () {
         Route::get('warranties', [WarrantyController::class, 'index'])->name('warranties.index');
+        // Static routes MUST appear before {warranty} wildcard
+        Route::get('warranties/batch-record', [WarrantyController::class, 'batchRecordIndex'])
+            ->name('warranties.batch-record')
+            ->middleware('permission:warranties.record_serial');
+        Route::get('warranties/{warranty}', [WarrantyController::class, 'show'])->name('warranties.show');
     });
     Route::middleware('permission:warranties.record_serial')->group(function () {
+        Route::post('warranties/batch-record', [WarrantyController::class, 'batchRecordStore'])
+            ->name('warranties.batch-record.store');
         Route::post('warranties/{warranty}/record-serial', [WarrantyController::class, 'recordSerial'])
             ->name('warranties.record-serial');
     });
     Route::middleware('permission:warranties.check')->group(function () {
-        Route::post('warranties/{warranty}/check', [WarrantyController::class, 'check'])
-            ->name('warranties.check');
-        Route::post('warranties/{warranty}/confirm', [WarrantyController::class, 'confirm'])
-            ->name('warranties.confirm');
+        Route::post('warranties/{warranty}/claims', [WarrantyClaimController::class, 'store'])
+            ->name('warranty-claims.store');
+        Route::post('warranty-claims/{claim}/confirm', [WarrantyClaimController::class, 'confirm'])
+            ->name('warranty-claims.confirm');
+        Route::post('warranty-claims/{claim}/no-defect', [WarrantyClaimController::class, 'noDefect'])
+            ->name('warranty-claims.no-defect');
     });
     Route::middleware('permission:warranties.send_to_supplier')->group(function () {
-        Route::post('warranties/{warranty}/send-to-supplier', [WarrantyController::class, 'sendToSupplier'])
-            ->name('warranties.send-to-supplier');
-        Route::post('warranties/{warranty}/replace-from-stock', [WarrantyController::class, 'replaceFromStock'])
-            ->name('warranties.replace-from-stock');
-        Route::post('warranties/{warranty}/refund', [WarrantyController::class, 'refund'])
-            ->name('warranties.refund');
-        Route::post('warranties/{warranty}/receive-replacement', [WarrantyController::class, 'receiveReplacement'])
-            ->name('warranties.receive-replacement');
+        Route::post('warranty-claims/{claim}/send-to-supplier', [WarrantyClaimController::class, 'sendToSupplier'])
+            ->name('warranty-claims.send-to-supplier');
+        Route::post('warranty-claims/{claim}/replace-from-stock', [WarrantyClaimController::class, 'replaceFromStock'])
+            ->name('warranty-claims.replace-from-stock');
+        Route::post('warranty-claims/{claim}/refund', [WarrantyClaimController::class, 'refund'])
+            ->name('warranty-claims.refund');
+        Route::post('warranty-claims/{claim}/receive-back', [WarrantyClaimController::class, 'receiveBack'])
+            ->name('warranty-claims.receive-back');
+        Route::post('warranty-claims/{claim}/send-defective-to-supplier', [WarrantyClaimController::class, 'sendDefectiveToSupplier'])
+            ->name('warranty-claims.send-defective-to-supplier');
+        Route::post('warranty-claims/{claim}/receive-defective-back', [WarrantyClaimController::class, 'receiveDefectiveBack'])
+            ->name('warranty-claims.receive-defective-back');
+    });
+    Route::middleware('permission:warranties.view')->group(function () {
+        Route::get('warranty-claims/{claim}/claiming-stub', [WarrantyClaimController::class, 'claimingStub'])
+            ->name('warranty-claims.claiming-stub');
     });
 
     // Payroll module
@@ -282,6 +300,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::post('payroll-periods/{payrollPeriod}/lock', [PayrollPeriodController::class, 'lock'])
             ->name('payroll-periods.lock')
+            ->middleware('permission:payroll.approve');
+
+        Route::post('payroll-periods/{payrollPeriod}/unlock', [PayrollPeriodController::class, 'unlock'])
+            ->name('payroll-periods.unlock')
             ->middleware('permission:payroll.approve');
 
         Route::post('payroll-periods/{payrollPeriod}/mark-paid', [PayrollPeriodController::class, 'markPaid'])
