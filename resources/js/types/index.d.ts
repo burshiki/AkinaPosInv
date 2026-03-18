@@ -14,6 +14,7 @@ export interface PageProps {
     auth: { user: User | null };
     flash: { success: string | null; error: string | null };
     app: { timezone: string; name: string };
+    receipt_note: string;
     inventoryMode: boolean;
     warrantyPendingCount: number;
     poPendingApprovalCount: number;
@@ -860,4 +861,42 @@ export interface RecurringBillTemplate {
     creator?: User;
     created_at: string;
     updated_at: string;
+}
+
+export interface QuotationItem {
+    id: number;
+    quotation_id: number;
+    product_id: number | null;
+    product_name: string;
+    product_sku: string | null;
+    quantity: number;
+    unit_price: number;
+    subtotal: number;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface Quotation {
+    id: number;
+    quotation_number: string;
+    customer_id: number | null;
+    customer_name: string | null;
+    customer_email: string | null;
+    customer_phone: string | null;
+    subtotal: number;
+    discount_type: 'fixed' | 'percentage';
+    discount_amount: number;
+    tax_amount: number;
+    total: number;
+    notes: string | null;
+    valid_until: string | null;
+    status: 'draft' | 'sent' | 'accepted' | 'expired';
+    user_id: number;
+    user?: User;
+    customer?: Customer;
+    items?: QuotationItem[];
+    items_count?: number;
+    created_at: string;
+    updated_at: string;
+    deleted_at?: string | null;
 }

@@ -142,6 +142,32 @@ class WarrantyClaimController extends Controller
     }
 
     /**
+     * Render a printable supplier reference sheet.
+     * Available for:
+     *   - in_repair claims (sent to supplier for repair/replacement via supplier)
+     *   - resolved claims with defective_status = 'sent' (defective unit returned to supplier)
+     */
+    public function supplierSheet(WarrantyClaim $claim)
+    {
+        $isInRepair       = $claim->status === 'in_repair';
+        $isDefectiveSent  = $claim->status === 'resolved' && $claim->defective_status === 'sent';
+
+        abort_unless(
+            $isInRepair || $isDefectiveSent,
+            403,
+            'Supplier sheet is only available for claims that have been sent to a supplier.'
+        );
+
+        $claim->load(['warranty.product', 'supplier', 'defectiveSupplier']);
+
+        return inertia('Warranties/SupplierSheet', [
+            'claim'          => $claim,
+            'appName'        => config('app.name'),
+            'isDefectiveSend' => $isDefectiveSent,
+        ]);
+    }
+
+    /**
      * Replacement from store inventory. confirmed → resolved.
      * Stock -1, old warranty → replaced, new active warranty created.
      */

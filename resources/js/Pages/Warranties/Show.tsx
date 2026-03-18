@@ -417,10 +417,16 @@ export default function WarrantyShow({ warranty, suppliers }: Props) {
                                                         </Button>
                                                     )}
                                                     {claim.defective_status === 'sent' && (
-                                                        <Button size="sm" variant="outline" className="h-7 text-xs border-green-500 text-green-700 hover:bg-green-50" onClick={() => openReceiveDefective(claim)}>
-                                                            <PackageCheck className="h-3.5 w-3.5 mr-1" />
-                                                            Receive Back — Add to Inventory
-                                                        </Button>
+                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                            <Button size="sm" variant="outline" className="h-7 text-xs border-slate-400 text-slate-700 hover:bg-slate-50" onClick={() => router.get(route('warranty-claims.supplier-sheet', claim.id))}>
+                                                                <Printer className="h-3.5 w-3.5 mr-1" />
+                                                                Print Supplier Sheet
+                                                            </Button>
+                                                            <Button size="sm" variant="outline" className="h-7 text-xs border-green-500 text-green-700 hover:bg-green-50" onClick={() => openReceiveDefective(claim)}>
+                                                                <PackageCheck className="h-3.5 w-3.5 mr-1" />
+                                                                Receive Back — Add to Inventory
+                                                            </Button>
+                                                        </div>
                                                     )}
                                                 </PermissionGate>
                                             </div>
@@ -459,6 +465,15 @@ export default function WarrantyShow({ warranty, suppliers }: Props) {
                                                         <Button
                                                             size="sm"
                                                             variant="outline"
+                                                            className="border-slate-400 text-slate-700 hover:bg-slate-50"
+                                                            onClick={() => router.get(route('warranty-claims.supplier-sheet', claim.id))}
+                                                        >
+                                                            <Printer className="h-4 w-4 mr-1.5" />
+                                                            Print Supplier Sheet
+                                                        </Button>
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
                                                             className="border-blue-400 text-blue-700 hover:bg-blue-50"
                                                             onClick={() => router.get(route('warranty-claims.claiming-stub', claim.id))}
                                                         >
@@ -481,8 +496,8 @@ export default function WarrantyShow({ warranty, suppliers }: Props) {
                                             </div>
                                         )}
 
-                                        {/* Print stub — outside isActive, always visible for resolved repair/replacement */}
-                                        {claim.status === 'resolved' && (claim.resolution_type === 'repair' || claim.resolution_type === 'replacement') && (
+                                        {/* Print stub — outside isActive, always visible for resolved repairs */}
+                                        {claim.status === 'resolved' && claim.resolution_type === 'repair' && (
                                             <div className="pt-2 border-t">
                                                 <Button
                                                     size="sm"

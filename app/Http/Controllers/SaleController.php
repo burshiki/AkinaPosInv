@@ -10,6 +10,7 @@ use App\Models\CashDrawerSession;
 use App\Models\Customer;
 use App\Models\InventorySession;
 use App\Models\Product;
+use App\Models\Quotation;
 use App\Models\Sale;
 use App\Services\SaleService;
 use Inertia\Inertia;
@@ -63,9 +64,15 @@ class SaleController extends Controller
             $completedSale = Sale::with(['items', 'user'])->find(session('completedSaleId'));
         }
 
+        $initialQuotation = null;
+        if (request()->filled('quotation_id')) {
+            $initialQuotation = Quotation::with(['items', 'customer'])
+                ->find(request()->integer('quotation_id'));
+        }
+
         return Inertia::render('Sales/Create', [
             'products' => Product::where('is_active', true)
-                ->where('stock_quantity', '>', 0)
+                ->when(!$initialQuotation, fn ($q) => $q->where('stock_quantity', '>', 0))
                 ->with('category')
                 ->orderBy('name')
                 ->get(),
@@ -74,6 +81,7 @@ class SaleController extends Controller
             'customers' => Customer::where('is_active', true)->orderBy('name')->get(['id', 'name', 'phone', 'email']),
             'drawerSession' => $drawerSession,
             'completedSale' => $completedSale,
+            'initialQuotation' => $initialQuotation,
         ]);
     }
 

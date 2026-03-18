@@ -16,7 +16,7 @@ import { formatCurrency } from '@/lib/utils';
 import { Minus, Plus, ShoppingCart, Trash2, Search, X, UserRound, UserPlus, Lock } from 'lucide-react';
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import axios from 'axios';
-import type { Product, Category, BankAccount, Customer, CashDrawerSession, Sale } from '@/types';
+import type { Product, Category, BankAccount, Customer, CashDrawerSession, Sale, Quotation } from '@/types';
 
 interface Props {
     products: Product[];
@@ -25,6 +25,7 @@ interface Props {
     customers: Pick<Customer, 'id' | 'name' | 'phone' | 'email'>[];
     drawerSession: CashDrawerSession;
     completedSale: Sale | null;
+    initialQuotation: Quotation | null;
 }
 
 interface CartItem {
@@ -32,7 +33,7 @@ interface CartItem {
     quantity: number;
 }
 
-export default function SalesCreate({ products, categories, bankAccounts, customers, drawerSession, completedSale }: Props) {
+export default function SalesCreate({ products, categories, bankAccounts, customers, drawerSession, completedSale, initialQuotation }: Props) {
     const [cart, setCart] = useState<CartItem[]>([]);
     const [search, setSearch] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -66,6 +67,41 @@ export default function SalesCreate({ products, categories, bankAccounts, custom
     useEffect(() => {
         if (completedSale) setShowReceiptModal(true);
     }, [completedSale]);
+
+    // Pre-populate cart + customer from a quotation (once on mount)
+    useEffect(() => {
+        if (!initialQuotation) return;
+        // Build cart from matching products
+        const preCart: CartItem[] = [];
+        (initialQuotation.items ?? []).forEach((item) => {
+            if (!item.product_id) return;
+            const product = products.find((p) => p.id === item.product_id);
+            if (!product) return;
+            preCart.push({ product, quantity: item.quantity });
+        });
+        if (preCart.length > 0) setCart(preCart);
+        // Pre-fill customer
+        if (initialQuotation.customer_id) {
+            const c = customers.find((c) => c.id === initialQuotation.customer_id);
+            if (c) {
+                setSelectedCustomerId(c.id);
+                setCustomerName(c.name);
+                setCustomerPhone(c.phone ?? '');
+                setCustomerSearch(c.name);
+            }
+        } else if (initialQuotation.customer_name) {
+            setCustomerName(initialQuotation.customer_name);
+            setCustomerPhone(initialQuotation.customer_phone ?? '');
+            setCustomerSearch(initialQuotation.customer_name);
+        }
+        // Pre-fill discount (quotation: 'fixed'/'percentage' → POS: 'amount'/'percent')
+        if (initialQuotation.discount_amount > 0) {
+            setDiscountType(initialQuotation.discount_type === 'percentage' ? 'percent' : 'amount');
+            setDiscountAmount(String(initialQuotation.discount_amount));
+        }
+        // Pre-fill notes
+        if (initialQuotation.notes) setNotes(initialQuotation.notes);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleCloseReceipt = () => {
         setShowReceiptModal(false);
@@ -330,6 +366,17 @@ export default function SalesCreate({ products, categories, bankAccounts, custom
                     </Link>
                 </Button>
             </div>
+
+            {/* Quotation banner */}
+            {initialQuotation && (
+                <div className="mb-3 flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-4 py-2 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">
+                    <span className="font-semibold">Quotation loaded:</span>
+                    <span className="font-mono">{initialQuotation.quotation_number}</span>
+                    {initialQuotation.items && initialQuotation.items.some((i) => !i.product_id) && (
+                        <span className="ml-1 text-xs opacity-70">(custom items without a product were skipped)</span>
+                    )}
+                </div>
+            )}
 
             <div className="flex h-[calc(100vh-11rem)] gap-4">
                 {/* Left Panel - Products */}

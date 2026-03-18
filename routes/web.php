@@ -28,11 +28,9 @@ use App\Http\Controllers\PayslipController;
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\PromotionController;
 use App\Http\Controllers\ProductVariantController;
+use App\Http\Controllers\SettingController;
 use App\Http\Controllers\HolidayController;
-use App\Http\Controllers\LeaveController;
-use App\Http\Controllers\RecurringDeductionController;
-use App\Http\Controllers\BackupController;
-use App\Http\Controllers\BillController;
+use App\Http\Controllers\QuotationController;
 use App\Http\Controllers\RecurringBillController;
 use Illuminate\Support\Facades\Route;
 
@@ -285,6 +283,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware('permission:warranties.view')->group(function () {
         Route::get('warranty-claims/{claim}/claiming-stub', [WarrantyClaimController::class, 'claimingStub'])
             ->name('warranty-claims.claiming-stub');
+        Route::get('warranty-claims/{claim}/supplier-sheet', [WarrantyClaimController::class, 'supplierSheet'])
+            ->name('warranty-claims.supplier-sheet');
     });
 
     // Payroll module
@@ -441,6 +441,25 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware('permission:ap.manage_recurring')->group(function () {
         Route::resource('recurring-bills', RecurringBillController::class)
             ->except(['show']);
+    });
+
+    // Quotations
+    Route::middleware('permission:sales.create')->group(function () {
+        Route::get('quotations', [QuotationController::class, 'index'])->name('quotations.index');
+        Route::get('quotations/create', [QuotationController::class, 'create'])->name('quotations.create');
+        Route::post('quotations', [QuotationController::class, 'store'])->name('quotations.store');
+        Route::get('quotations/{quotation}', [QuotationController::class, 'show'])->name('quotations.show');
+        Route::get('quotations/{quotation}/print', [QuotationController::class, 'printView'])->name('quotations.print');
+        Route::post('quotations/{quotation}/send-email', [QuotationController::class, 'sendEmail'])->name('quotations.send-email');
+        Route::post('quotations/{quotation}/status', [QuotationController::class, 'updateStatus'])->name('quotations.update-status');
+        Route::post('quotations/{quotation}/proceed-to-sale', [QuotationController::class, 'proceedToSale'])->name('quotations.proceed-to-sale');
+        Route::delete('quotations/{quotation}', [QuotationController::class, 'destroy'])->name('quotations.destroy');
+    });
+
+    // Settings (admin only)
+    Route::middleware('permission:users.view')->group(function () {
+        Route::get('settings', [SettingController::class, 'index'])->name('settings.index');
+        Route::post('settings', [SettingController::class, 'update'])->name('settings.update');
     });
 
     // Database backup (admin only)

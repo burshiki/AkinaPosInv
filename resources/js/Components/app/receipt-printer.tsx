@@ -2,7 +2,8 @@ import { formatCurrency, formatDate } from '@/lib/utils';
 import { Separator } from '@/Components/ui/separator';
 import { Button } from '@/Components/ui/button';
 import { Printer } from 'lucide-react';
-import type { Sale } from '@/types';
+import { usePage } from '@inertiajs/react';
+import type { Sale, PageProps } from '@/types';
 
 interface ReceiptPrinterProps {
     sale: Sale;
@@ -10,6 +11,8 @@ interface ReceiptPrinterProps {
 }
 
 export function ReceiptPrinter({ sale, storeName = 'Akina POS' }: ReceiptPrinterProps) {
+    const { receipt_note } = usePage<PageProps>().props;
+
     const handlePrint = () => {
         const printWindow = window.open('', '_blank');
         if (!printWindow) return;
@@ -25,6 +28,7 @@ export function ReceiptPrinter({ sale, storeName = 'Akina POS' }: ReceiptPrinter
                     .right { text-align: right; }
                     .bold { font-weight: bold; }
                     .line { border-top: 1px dashed #000; margin: 5px 0; }
+                    .note { text-align: center; font-size: 11px; margin-top: 4px; white-space: pre-wrap; }
                     table { width: 100%; border-collapse: collapse; }
                     td { padding: 2px 0; }
                     @media print { body { margin: 0; } }
@@ -62,6 +66,7 @@ export function ReceiptPrinter({ sale, storeName = 'Akina POS' }: ReceiptPrinter
                 ${sale.change_amount ? `<div>Change: ${formatCurrency(sale.change_amount)}</div>` : ''}
                 <div class="line"></div>
                 <div class="center">Thank you for your purchase!</div>
+                ${receipt_note ? `<div class="line"></div><div class="note">${receipt_note}</div>` : ''}
             </body>
             </html>
         `;
@@ -125,6 +130,12 @@ export function ReceiptPrinter({ sale, storeName = 'Akina POS' }: ReceiptPrinter
                         <div>Change: {formatCurrency(sale.change_amount)}</div>
                     )}
                 </div>
+                {receipt_note && (
+                    <>
+                        <Separator />
+                        <div className="text-center text-xs text-muted-foreground whitespace-pre-wrap">{receipt_note}</div>
+                    </>
+                )}
             </div>
             <Button onClick={handlePrint} variant="outline" className="mt-4 w-full">
                 <Printer className="mr-2 h-4 w-4" />

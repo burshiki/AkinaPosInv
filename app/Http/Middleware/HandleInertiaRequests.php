@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Models\InventorySession;
 use App\Models\PurchaseOrder;
+use App\Models\Setting;
 use App\Models\Warranty;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -40,6 +41,7 @@ class HandleInertiaRequests extends Middleware
                 'timezone' => config('app.timezone'),
                 'name'     => config('app.name'),
             ],
+            'receipt_note' => fn () => Setting::get('receipt_note', ''),
             'warrantyPendingCount' => fn () => $request->user()
                 ? Warranty::pending()->count()
                 : 0,
