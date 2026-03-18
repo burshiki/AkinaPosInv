@@ -8,18 +8,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/Components/ui/table';
 import { Pagination } from '@/Components/ui/pagination';
 import { PermissionGate } from '@/Components/app/permission-gate';
+import { ScrollArea } from '@/Components/ui/scroll-area';
 import { formatCurrency, formatDateOnly } from '@/lib/utils';
 import { useDebounce } from '@/hooks/use-debounce';
-import { Plus, Search, Eye, AlertTriangle, Clock, DollarSign } from 'lucide-react';
+import { Plus, Search, Eye, AlertTriangle, Clock, DollarSign, FileText } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import type { Bill, PaginatedData, Supplier } from '@/types';
 
-const STATUS_LABELS: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
+const STATUS_CFG: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' | 'success' }> = {
     unpaid:         { label: 'Unpaid',      variant: 'secondary' },
     partially_paid: { label: 'Partial',     variant: 'outline' },
-    paid:           { label: 'Paid',        variant: 'default' },
+    paid:           { label: 'Paid',        variant: 'success' },
     overdue:        { label: 'Overdue',     variant: 'destructive' },
-    voided:         { label: 'Voided',      variant: 'destructive' },
+    voided:         { label: 'Voided',      variant: 'secondary' },
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -61,10 +62,25 @@ export default function BillsIndex({ bills, filters, totalOutstanding, totalOver
     };
 
     return (
-        <AuthenticatedLayout header="Accounts Payable">
+        <AuthenticatedLayout>
             <Head title="Bills" />
 
-            <div className="space-y-4">
+            <div className="space-y-6 p-6">
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                    <h1 className="text-2xl font-bold flex items-center gap-2">
+                        <FileText className="h-6 w-6" />
+                        Accounts Payable
+                    </h1>
+                    <PermissionGate permission="ap.create">
+                        <Button asChild>
+                            <Link href={route('bills.create')}>
+                                <Plus className="h-4 w-4 mr-1.5" /> New Bill
+                            </Link>
+                        </Button>
+                    </PermissionGate>
+                </div>
+
                 {/* Summary Cards */}
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                     <Card>
@@ -136,17 +152,11 @@ export default function BillsIndex({ bills, filters, totalOutstanding, totalOver
                             </SelectContent>
                         </Select>
                     </div>
-                    <PermissionGate permission="ap.create">
-                        <Button asChild>
-                            <Link href={route('bills.create')}>
-                                <Plus className="mr-2 h-4 w-4" /> New Bill
-                            </Link>
-                        </Button>
-                    </PermissionGate>
                 </div>
 
                 {/* Table */}
                 <div className="rounded-md border">
+                    <ScrollArea>
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -163,13 +173,13 @@ export default function BillsIndex({ bills, filters, totalOutstanding, totalOver
                         <TableBody>
                             {bills.data.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
+                                    <TableCell colSpan={8} className="h-32 text-center text-muted-foreground">
                                         No bills found
                                     </TableCell>
                                 </TableRow>
                             ) : (
                                 bills.data.map((bill) => {
-                                    const statusInfo = STATUS_LABELS[bill.status] ?? { label: bill.status, variant: 'secondary' as const };
+                                    const statusInfo = STATUS_CFG[bill.status] ?? { label: bill.status, variant: 'secondary' as const };
                                     return (
                                         <TableRow key={bill.id}>
                                             <TableCell className="font-medium">{bill.bill_number}</TableCell>
@@ -199,8 +209,7 @@ export default function BillsIndex({ bills, filters, totalOutstanding, totalOver
                                 })
                             )}
                         </TableBody>
-                    </Table>
-                </div>
+                    </Table>                    </ScrollArea>                </div>
 
                 <Pagination data={bills} />
             </div>

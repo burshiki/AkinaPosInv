@@ -133,6 +133,35 @@ class StockController extends Controller
         return back()->with('success', "Stock for {$product->name} updated to {$product->fresh()->stock_quantity}.");
     }
 
+    public function internalUse(Request $request, Product $product)
+    {
+        $validated = $request->validate([
+            'quantity' => ['required', 'integer', 'min:1'],
+            'purpose'  => ['nullable', 'string', 'max:500'],
+        ]);
+
+        DB::transaction(function () use ($validated, $product) {
+            $before = $product->stock_quantity;
+            $after  = max(0, $before - $validated['quantity']);
+            $change = $after - $before;
+
+            $product->update(['stock_quantity' => $after]);
+
+            StockAdjustment::create([
+                'product_id'           => $product->id,
+                'user_id'              => auth()->id(),
+                'inventory_session_id' => null,
+                'type'                 => 'internal_use',
+                'before_qty'           => $before,
+                'change_qty'           => $change,
+                'after_qty'            => $after,
+                'reason'               => $validated['purpose'] ?? null,
+            ]);
+        });
+
+        return back()->with('success', "Recorded internal use of {$validated['quantity']} unit(s) of {$product->name}.");
+    }
+
     public function inventoryCount(Request $request, Product $product)
     {
         abort_unless(InventorySession::isActive(), 422, 'No active inventory session.');

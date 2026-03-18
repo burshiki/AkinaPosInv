@@ -1,1 +1,3 @@
 *.sqlite*
+backup_*.sql
+backup_script.php

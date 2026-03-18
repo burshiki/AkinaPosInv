@@ -15,6 +15,7 @@ import type { PaginatedData, StockAdjustment } from '@/types';
 const TYPE_CONFIG: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive' }> = {
     manual:               { label: 'Manual',               variant: 'outline' },
     inventory_count:      { label: 'Inventory Count',      variant: 'default' },
+    internal_use:         { label: 'Internal Use',         variant: 'outline' },
     warranty_replacement:          { label: 'Warranty Replacement',          variant: 'secondary' },
     warranty_replacement_received: { label: 'Warranty Replacement Received', variant: 'secondary' },
     warranty_repair_received:      { label: 'Warranty Repair Received',      variant: 'secondary' },
@@ -123,6 +124,7 @@ export default function StockTransactions({ adjustments, filters }: Props) {
                             <SelectItem value="void">Void</SelectItem>
                             <SelectItem value="manual">Manual</SelectItem>
                             <SelectItem value="inventory_count">Inventory Count</SelectItem>
+                            <SelectItem value="internal_use">Internal Use</SelectItem>
                             <SelectItem value="warranty_replacement">Warranty Replacement</SelectItem>
                             <SelectItem value="warranty_replacement_received">Warranty Replacement Received</SelectItem>
                             <SelectItem value="warranty_repair_received">Warranty Repair Received</SelectItem>

@@ -25,6 +25,7 @@ import {
     Repeat,
     Settings,
     ClipboardList,
+    Wrench,
 } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/Components/ui/button';
@@ -45,7 +46,8 @@ const navItems: NavItem[] = [
     { label: 'Assemblies', href: '/assemblies', icon: Puzzle, permission: 'inventory.build', active: 'assemblies.*' },
     { label: 'Point of Sale', href: '/sales/create', icon: ShoppingCart, permission: 'sales.create', active: 'sales.create' },
     { label: 'Sales History', href: '/sales', icon: ShoppingCart, permission: 'sales.view', active: 'sales.index' },
-    { label: 'Quotations', href: '/quotations', icon: ClipboardList, permission: 'sales.create', active: 'quotations.*' },
+    { label: 'Quotations', href: '/quotations', icon: ClipboardList, permission: 'quotations.view', active: 'quotations.*' },
+    { label: 'Repairs', href: '/repairs', icon: Wrench, permission: 'repairs.view', active: 'repairs.*' },
     { label: 'Cash Drawer', href: '/cash-drawer', icon: DollarSign, permission: 'sales.view', active: 'cash-drawer.*' },
     { label: 'Bank Accounts', href: '/bank-accounts', icon: Landmark, permission: 'banking.view', active: 'bank-accounts.*' },
     { label: 'Customers', href: '/customers', icon: UserRound, permission: 'customers.view', active: 'customers.*' },
@@ -61,7 +63,7 @@ const navItems: NavItem[] = [
     { label: 'Leave', href: '/leave', icon: CalendarDays, permission: 'leave.view', active: 'leave.*' },
     { label: 'Reports', href: '/reports', icon: BarChart3, permission: 'reports.view', active: 'reports.*' },
     { label: 'Users', href: '/users', icon: Users, permission: 'users.view', active: 'users.*' },
-    { label: 'Settings', href: '/settings', icon: Settings, permission: 'users.view', active: 'settings.*' },
+    { label: 'Settings', href: '/settings', icon: Settings, permission: 'settings.manage', active: 'settings.*' },
 ];
 
 interface SidebarProps {

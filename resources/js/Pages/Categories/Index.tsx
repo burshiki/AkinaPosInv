@@ -6,10 +6,11 @@ import { Label } from '@/Components/ui/label';
 import { Textarea } from '@/Components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/Components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/Components/ui/dialog';
+import { ScrollArea } from '@/Components/ui/scroll-area';
 
 import { Badge } from '@/Components/ui/badge';
 import { PermissionGate } from '@/Components/app/permission-gate';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Tag } from 'lucide-react';
 import { useState } from 'react';
 import { useConfirm } from '@/Components/app/confirm-dialog';
 import type { Category } from '@/types';
@@ -74,19 +75,25 @@ export default function CategoriesIndex({ categories }: Props) {
     };
 
     return (
-        <AuthenticatedLayout header="Categories">
+        <AuthenticatedLayout>
             <Head title="Categories" />
 
-            <div className="space-y-4">
-                <div className="flex justify-end">
+            <div className="space-y-6 p-6">
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                    <h1 className="text-2xl font-bold flex items-center gap-2">
+                        <Tag className="h-6 w-6" />
+                        Categories
+                    </h1>
                     <PermissionGate permission="inventory.create">
                         <Button onClick={openCreateDialog}>
-                            <Plus className="mr-2 h-4 w-4" /> Add Category
+                            <Plus className="h-4 w-4 mr-1.5" /> Add Category
                         </Button>
                     </PermissionGate>
                 </div>
 
                 <div className="rounded-md border">
+                    <ScrollArea>
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -101,7 +108,7 @@ export default function CategoriesIndex({ categories }: Props) {
                         <TableBody>
                             {categories.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                                    <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
                                         No categories found
                                     </TableCell>
                                 </TableRow>
@@ -135,8 +142,7 @@ export default function CategoriesIndex({ categories }: Props) {
                                 ))
                             )}
                         </TableBody>
-                    </Table>
-                </div>
+                    </Table>                    </ScrollArea>                </div>
             </div>
 
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

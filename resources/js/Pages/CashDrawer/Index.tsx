@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Pagination } from '@/Components/ui/pagination';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/Components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
+import { ScrollArea } from '@/Components/ui/scroll-area';
 import { formatCurrency } from '@/lib/utils';
 import { useDebounce } from '@/hooks/use-debounce';
 import { Eye, Search, DollarSign, AlertCircle, AlertTriangle, ArrowDown, ArrowUp, ArrowRightLeft, Wallet, PlusCircle } from 'lucide-react';
@@ -188,10 +189,18 @@ export default function CashDrawerIndex({ sessions, filters, openSession, summar
     const isOwner = openSession?.user_id === auth.user?.id;
 
     return (
-        <AuthenticatedLayout header="Cash Drawer Sessions">
+        <AuthenticatedLayout>
             <Head title="Cash Drawer Sessions" />
 
-            <div className="space-y-4">
+            <div className="space-y-6 p-6">
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                    <h1 className="text-2xl font-bold flex items-center gap-2">
+                        <Wallet className="h-6 w-6" />
+                        Cash Drawer
+                    </h1>
+                </div>
+
                 {/* Current session status bar */}
                 <div className={`flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between ${openSession ? 'border-green-300 bg-green-50 dark:border-green-800 dark:bg-green-950/30' : 'border-muted bg-muted/40'}`}>
                     <div className="flex items-center gap-3">
@@ -287,6 +296,7 @@ export default function CashDrawerIndex({ sessions, filters, openSession, summar
 
                 {/* Sessions table */}
                 <div className="rounded-md border">
+                    <ScrollArea>
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -305,7 +315,7 @@ export default function CashDrawerIndex({ sessions, filters, openSession, summar
                         <TableBody>
                             {sessions.data.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={10} className="py-8 text-center text-muted-foreground">
+                                    <TableCell colSpan={10} className="h-32 text-center text-muted-foreground">
                                         No cash drawer sessions found
                                     </TableCell>
                                 </TableRow>
@@ -355,8 +365,7 @@ export default function CashDrawerIndex({ sessions, filters, openSession, summar
                                 ))
                             )}
                         </TableBody>
-                    </Table>
-                </div>
+                    </Table>                    </ScrollArea>                </div>
 
                 {sessions.last_page > 1 && <Pagination data={sessions} />}
             </div>

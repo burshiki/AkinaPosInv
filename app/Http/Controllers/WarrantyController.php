@@ -80,6 +80,29 @@ class WarrantyController extends Controller
         ]);
     }
 
+    /** JSON endpoint for the modal view on the Index page. */
+    public function detail(Warranty $warranty): \Illuminate\Http\JsonResponse
+    {
+        $warranty->load([
+            'product',
+            'sale',
+            'claims.supplier',
+            'claims.defectiveSupplier',
+            'parentWarranty.product',
+            'childWarranty.product',
+            'childWarranty.claims',
+        ]);
+
+        $suppliers = Supplier::where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        return response()->json([
+            'warranty'  => $warranty,
+            'suppliers' => $suppliers,
+        ]);
+    }
+
     public function batchRecordIndex(Request $request)
     {
         $receiptFilter = $request->input('receipt');

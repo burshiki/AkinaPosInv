@@ -1,46 +1,48 @@
-﻿import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, router } from '@inertiajs/react';
+import { router } from '@inertiajs/react';
 import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import { Label } from '@/Components/ui/label';
 import { Textarea } from '@/Components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/Components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/Components/ui/table';
 import { formatCurrency } from '@/lib/utils';
-import { Search, Plus, Trash2, ClipboardList, ArrowLeft } from 'lucide-react';
+import { Search, Plus, Trash2, ClipboardList } from 'lucide-react';
 import { useState } from 'react';
 import type { Product, Customer } from '@/types';
 
 interface CartItem {
-    product_id: number | null;
+    product_id:   number | null;
     product_name: string;
-    product_sku: string | null;
-    quantity: number;
-    unit_price: number;
-    subtotal: number;
+    product_sku:  string | null;
+    quantity:     number;
+    unit_price:   number;
+    subtotal:     number;
 }
 
 interface Props {
+    open:      boolean;
+    onClose:   () => void;
     products:  Pick<Product, 'id' | 'name' | 'sku' | 'selling_price'>[];
     customers: Pick<Customer, 'id' | 'name' | 'phone' | 'email'>[];
 }
 
-export default function QuotationsCreate({ products, customers }: Props) {
-    const [cart, setCart]                       = useState<CartItem[]>([]);
-    const [productSearch, setProductSearch]     = useState('');
-    const [showProducts, setShowProducts]       = useState(false);
-    const [customerSearch, setCustomerSearch]   = useState('');
-    const [showCustomers, setShowCustomers]     = useState(false);
-    const [customerId, setCustomerId]           = useState<number | null>(null);
-    const [customerName, setCustomerName]       = useState('');
-    const [customerEmail, setCustomerEmail]     = useState('');
-    const [customerPhone, setCustomerPhone]     = useState('');
-    const [discountType, setDiscountType]       = useState<'fixed' | 'percentage'>('fixed');
-    const [discountAmount, setDiscountAmount]   = useState(0);
-    const [notes, setNotes]                     = useState('');
-    const [validUntil, setValidUntil]           = useState('');
-    const [processing, setProcessing]           = useState(false);
-    const [errors, setErrors]                   = useState<Record<string, string>>({});
+export default function CreateModal({ open, onClose, products, customers }: Props) {
+    const [cart, setCart]                     = useState<CartItem[]>([]);
+    const [productSearch, setProductSearch]   = useState('');
+    const [showProducts, setShowProducts]     = useState(false);
+    const [customerSearch, setCustomerSearch] = useState('');
+    const [showCustomers, setShowCustomers]   = useState(false);
+    const [customerId, setCustomerId]         = useState<number | null>(null);
+    const [customerName, setCustomerName]     = useState('');
+    const [customerEmail, setCustomerEmail]   = useState('');
+    const [customerPhone, setCustomerPhone]   = useState('');
+    const [discountType, setDiscountType]     = useState<'fixed' | 'percentage'>('fixed');
+    const [discountAmount, setDiscountAmount] = useState(0);
+    const [notes, setNotes]                   = useState('');
+    const [validUntil, setValidUntil]         = useState('');
+    const [processing, setProcessing]         = useState(false);
+    const [errors, setErrors]                 = useState<Record<string, string>>({});
 
     const filteredProducts = productSearch.length > 0
         ? products.filter((p) =>
@@ -54,11 +56,31 @@ export default function QuotationsCreate({ products, customers }: Props) {
             (c.email ?? '').toLowerCase().includes(customerSearch.toLowerCase()))
         : [];
 
-    const subtotal = cart.reduce((s, i) => s + i.subtotal, 0);
+    const subtotal      = cart.reduce((s, i) => s + i.subtotal, 0);
     const discountValue = discountType === 'percentage'
         ? subtotal * (discountAmount / 100)
         : discountAmount;
     const total = Math.max(0, subtotal - discountValue);
+
+    function resetForm() {
+        setCart([]);
+        setProductSearch('');
+        setCustomerSearch('');
+        setCustomerId(null);
+        setCustomerName('');
+        setCustomerEmail('');
+        setCustomerPhone('');
+        setDiscountType('fixed');
+        setDiscountAmount(0);
+        setNotes('');
+        setValidUntil('');
+        setErrors({});
+        setProcessing(false);
+    }
+
+    function handleOpenChange(v: boolean) {
+        if (!v) { resetForm(); onClose(); }
+    }
 
     function addProduct(p: typeof products[0]) {
         setCart((prev) => {
@@ -68,7 +90,14 @@ export default function QuotationsCreate({ products, customers }: Props) {
                     ? { ...i, quantity: i.quantity + 1, subtotal: (i.quantity + 1) * i.unit_price }
                     : i);
             }
-            return [...prev, { product_id: p.id, product_name: p.name, product_sku: p.sku ?? null, quantity: 1, unit_price: p.selling_price, subtotal: p.selling_price }];
+            return [...prev, {
+                product_id:   p.id,
+                product_name: p.name,
+                product_sku:  p.sku ?? null,
+                quantity:     1,
+                unit_price:   p.selling_price,
+                subtotal:     p.selling_price,
+            }];
         });
         setProductSearch('');
         setShowProducts(false);
@@ -76,17 +105,28 @@ export default function QuotationsCreate({ products, customers }: Props) {
 
     function addCustomItem() {
         if (!productSearch.trim()) return;
-        setCart((prev) => [...prev, { product_id: null, product_name: productSearch.trim(), product_sku: null, quantity: 1, unit_price: 0, subtotal: 0 }]);
+        setCart((prev) => [...prev, {
+            product_id:   null,
+            product_name: productSearch.trim(),
+            product_sku:  null,
+            quantity:     1,
+            unit_price:   0,
+            subtotal:     0,
+        }]);
         setProductSearch('');
         setShowProducts(false);
     }
 
     function updateQty(idx: number, qty: number) {
-        setCart((prev) => prev.map((i, j) => j === idx ? { ...i, quantity: qty, subtotal: qty * i.unit_price } : i));
+        setCart((prev) => prev.map((i, j) => j === idx
+            ? { ...i, quantity: qty, subtotal: qty * i.unit_price }
+            : i));
     }
 
     function updatePrice(idx: number, price: number) {
-        setCart((prev) => prev.map((i, j) => j === idx ? { ...i, unit_price: price, subtotal: i.quantity * price } : i));
+        setCart((prev) => prev.map((i, j) => j === idx
+            ? { ...i, unit_price: price, subtotal: i.quantity * price }
+            : i));
     }
 
     function removeItem(idx: number) {
@@ -107,41 +147,40 @@ export default function QuotationsCreate({ products, customers }: Props) {
         if (cart.length === 0) return;
         setProcessing(true);
         router.post(route('quotations.store'), {
-            customer_id:    customerId,
-            customer_name:  customerName || null,
-            customer_email: customerEmail || null,
-            customer_phone: customerPhone || null,
-            discount_type:  discountType,
+            customer_id:     customerId,
+            customer_name:   customerName   || null,
+            customer_email:  customerEmail  || null,
+            customer_phone:  customerPhone  || null,
+            discount_type:   discountType,
             discount_amount: discountAmount,
-            notes:          notes || null,
-            valid_until:    validUntil || null,
+            notes:           notes          || null,
+            valid_until:     validUntil     || null,
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            items:          cart as any,
+            items: cart as any,
         }, {
-            onError: (e) => { setErrors(e); setProcessing(false); },
+            onError:  (e) => { setErrors(e); setProcessing(false); },
             onFinish: () => setProcessing(false),
+            onSuccess: () => { resetForm(); onClose(); },
         });
     }
 
     return (
-        <AuthenticatedLayout>
-            <Head title="New Quotation" />
-            <div className="max-w-6xl mx-auto space-y-6 p-6">
-                <div className="flex items-center gap-3">
-                    <Button variant="outline" size="sm" onClick={() => router.get(route('quotations.index'))}>
-                        <ArrowLeft className="h-4 w-4 mr-1" /> Back
-                    </Button>
-                    <h1 className="text-xl font-bold flex items-center gap-2">
-                        <ClipboardList className="h-5 w-5" /> New Quotation
-                    </h1>
-                </div>
+        <Dialog open={open} onOpenChange={handleOpenChange}>
+            <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                        <ClipboardList className="h-5 w-5" />
+                        New Quotation
+                    </DialogTitle>
+                </DialogHeader>
 
-                <form onSubmit={handleSubmit}>
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
                         {/* Items panel */}
                         <div className="lg:col-span-2 space-y-4">
                             <div className="rounded-lg border p-4 space-y-4">
-                                <h2 className="font-semibold">Items</h2>
+                                <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Items</h2>
 
                                 {/* Product search */}
                                 <div className="relative">
@@ -228,7 +267,7 @@ export default function QuotationsCreate({ products, customers }: Props) {
                                         </Table>
                                     </div>
                                 ) : (
-                                    <p className="text-center py-8 text-muted-foreground text-sm">
+                                    <p className="text-center py-6 text-muted-foreground text-sm">
                                         Search for products above to add items.
                                     </p>
                                 )}
@@ -240,11 +279,15 @@ export default function QuotationsCreate({ products, customers }: Props) {
                         <div className="space-y-4">
                             {/* Customer */}
                             <div className="rounded-lg border p-4 space-y-3">
-                                <h2 className="font-semibold">Customer</h2>
+                                <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Customer</h2>
                                 <div className="relative">
                                     <Input placeholder="Search existing customers…"
                                         value={customerSearch}
-                                        onChange={(e) => { setCustomerSearch(e.target.value); setShowCustomers(true); if (!e.target.value) setCustomerId(null); }}
+                                        onChange={(e) => {
+                                            setCustomerSearch(e.target.value);
+                                            setShowCustomers(true);
+                                            if (!e.target.value) setCustomerId(null);
+                                        }}
                                         onFocus={() => setShowCustomers(true)}
                                         onBlur={() => setTimeout(() => setShowCustomers(false), 150)}
                                     />
@@ -265,23 +308,26 @@ export default function QuotationsCreate({ products, customers }: Props) {
                                 <div className="space-y-2">
                                     <div>
                                         <Label className="text-xs">Name</Label>
-                                        <Input className="h-8 text-sm mt-1" placeholder="Customer name" value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
+                                        <Input className="h-8 text-sm mt-1" placeholder="Customer name"
+                                            value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
                                     </div>
                                     <div>
                                         <Label className="text-xs">Email</Label>
-                                        <Input className="h-8 text-sm mt-1" type="email" placeholder="email@example.com" value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} />
+                                        <Input className="h-8 text-sm mt-1" type="email" placeholder="email@example.com"
+                                            value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} />
                                         {errors.customer_email && <p className="text-xs text-destructive mt-0.5">{errors.customer_email}</p>}
                                     </div>
                                     <div>
                                         <Label className="text-xs">Phone</Label>
-                                        <Input className="h-8 text-sm mt-1" placeholder="Phone number" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} />
+                                        <Input className="h-8 text-sm mt-1" placeholder="Phone number"
+                                            value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} />
                                     </div>
                                 </div>
                             </div>
 
                             {/* Discount */}
                             <div className="rounded-lg border p-4 space-y-3">
-                                <h2 className="font-semibold">Discount</h2>
+                                <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Discount</h2>
                                 <div className="flex gap-2">
                                     <Select value={discountType} onValueChange={(v) => setDiscountType(v as 'fixed' | 'percentage')}>
                                         <SelectTrigger className="w-32 h-8 text-sm">
@@ -321,21 +367,29 @@ export default function QuotationsCreate({ products, customers }: Props) {
                             <div className="rounded-lg border p-4 space-y-3">
                                 <div>
                                     <Label className="text-xs">Valid Until</Label>
-                                    <Input type="date" className="h-8 text-sm mt-1" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} />
+                                    <Input type="date" className="h-8 text-sm mt-1"
+                                        value={validUntil} onChange={(e) => setValidUntil(e.target.value)} />
                                 </div>
                                 <div>
                                     <Label className="text-xs">Notes</Label>
-                                    <Textarea className="text-sm mt-1" rows={3} placeholder="Additional notes or terms…" value={notes} onChange={(e) => setNotes(e.target.value)} />
+                                    <Textarea className="text-sm mt-1" rows={3}
+                                        placeholder="Additional notes or terms…"
+                                        value={notes} onChange={(e) => setNotes(e.target.value)} />
                                 </div>
                             </div>
-
-                            <Button type="submit" className="w-full" disabled={processing || cart.length === 0}>
-                                {processing ? 'Creating…' : 'Create Quotation'}
-                            </Button>
                         </div>
                     </div>
+
+                    <DialogFooter>
+                        <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
+                            Cancel
+                        </Button>
+                        <Button type="submit" disabled={processing || cart.length === 0}>
+                            {processing ? 'Creating…' : 'Create Quotation'}
+                        </Button>
+                    </DialogFooter>
                 </form>
-            </div>
-        </AuthenticatedLayout>
+            </DialogContent>
+        </Dialog>
     );
 }

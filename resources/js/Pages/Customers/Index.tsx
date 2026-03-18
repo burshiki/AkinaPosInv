@@ -8,12 +8,12 @@ import { Textarea } from '@/Components/ui/textarea';
 import { Checkbox } from '@/Components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/Components/ui/table';
-
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/Components/ui/dialog';
+import { ScrollArea } from '@/Components/ui/scroll-area';
 import { Pagination } from '@/Components/ui/pagination';
 import { PermissionGate } from '@/Components/app/permission-gate';
 import { useDebounce } from '@/hooks/use-debounce';
-import { Plus, Search, Eye, Pencil, Trash2, CreditCard, Banknote } from 'lucide-react';
+import { Plus, Search, Eye, Pencil, Trash2, CreditCard, Banknote, Users } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useConfirm } from '@/Components/app/confirm-dialog';
 import type { Customer, PaginatedData } from '@/types';
@@ -116,49 +116,55 @@ export default function CustomersIndex({ customers, filters }: Props) {
     };
 
     return (
-        <AuthenticatedLayout header="Customers">
+        <AuthenticatedLayout>
             <Head title="Customers" />
 
-            <div className="space-y-4">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex flex-1 items-center gap-2">
-                        <div className="relative flex-1 max-w-sm">
-                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                            <Input
-                                placeholder="Search customers..."
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                className="pl-9"
-                            />
-                        </div>
-                        <Select value={filters.status ?? 'all'} onValueChange={handleStatusFilter}>
-                            <SelectTrigger className="w-36">
-                                <SelectValue placeholder="Status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All</SelectItem>
-                                <SelectItem value="active">Active</SelectItem>
-                                <SelectItem value="inactive">Inactive</SelectItem>
-                            </SelectContent>
-                        </Select>
+            <div className="space-y-6 p-6">
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                    <h1 className="text-2xl font-bold flex items-center gap-2">
+                        <Users className="h-6 w-6" />
+                        Customers
+                    </h1>
+                    <PermissionGate permission="customers.create">
+                        <Button onClick={openCreate}>
+                            <Plus className="h-4 w-4 mr-1.5" /> Add Customer
+                        </Button>
+                    </PermissionGate>
+                </div>
+
+                {/* Filters */}
+                <div className="flex flex-wrap gap-3">
+                    <div className="relative flex-1 min-w-48">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Search customers..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="pl-9"
+                        />
                     </div>
-                    <div className="flex items-center gap-2">
-                        <PermissionGate permission="debts.view">
-                            <Button variant="outline" asChild>
-                                <Link href={route('debts.index')}>
-                                    <CreditCard className="mr-2 h-4 w-4" /> All Debts
-                                </Link>
-                            </Button>
-                        </PermissionGate>
-                        <PermissionGate permission="customers.create">
-                            <Button onClick={openCreate}>
-                                <Plus className="mr-2 h-4 w-4" /> Add Customer
-                            </Button>
-                        </PermissionGate>
-                    </div>
+                    <Select value={filters.status ?? 'all'} onValueChange={handleStatusFilter}>
+                        <SelectTrigger className="w-36">
+                            <SelectValue placeholder="Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All</SelectItem>
+                            <SelectItem value="active">Active</SelectItem>
+                            <SelectItem value="inactive">Inactive</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <PermissionGate permission="debts.view">
+                        <Button variant="outline" asChild>
+                            <Link href={route('debts.index')}>
+                                <CreditCard className="mr-2 h-4 w-4" /> All Debts
+                            </Link>
+                        </Button>
+                    </PermissionGate>
                 </div>
 
                 <div className="rounded-md border">
+                    <ScrollArea>
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -173,7 +179,7 @@ export default function CustomersIndex({ customers, filters }: Props) {
                         <TableBody>
                             {customers.data.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
+                                    <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
                                         No customers found
                                     </TableCell>
                                 </TableRow>
@@ -187,7 +193,7 @@ export default function CustomersIndex({ customers, filters }: Props) {
                                             {customer.address ?? '—'}
                                         </TableCell>
                                         <TableCell>
-                                            <Badge variant={customer.is_active ? 'default' : 'secondary'}>
+                                            <Badge variant={customer.is_active ? 'success' : 'secondary'}>
                                                 {customer.is_active ? 'Active' : 'Inactive'}
                                             </Badge>
                                         </TableCell>
@@ -222,8 +228,7 @@ export default function CustomersIndex({ customers, filters }: Props) {
                                 ))
                             )}
                         </TableBody>
-                    </Table>
-                </div>
+                    </Table>                    </ScrollArea>                </div>
 
                 <Pagination data={customers} />
             </div>

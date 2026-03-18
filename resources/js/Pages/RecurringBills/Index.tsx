@@ -6,10 +6,12 @@ import { Badge } from '@/Components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/Components/ui/table';
 import { Pagination } from '@/Components/ui/pagination';
+import { ScrollArea } from '@/Components/ui/scroll-area';
+import { PermissionGate } from '@/Components/app/permission-gate';
 import { formatCurrency, formatDateOnly } from '@/lib/utils';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useConfirm } from '@/Components/app/confirm-dialog';
-import { Plus, Search, Edit, Trash2 } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, RefreshCw } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import type { RecurringBillTemplate, PaginatedData } from '@/types';
 
@@ -65,40 +67,50 @@ export default function RecurringBillsIndex({ templates, filters }: Props) {
     };
 
     return (
-        <AuthenticatedLayout header="Recurring Bills">
+        <AuthenticatedLayout>
             <Head title="Recurring Bills" />
 
-            <div className="space-y-4">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex flex-1 items-center gap-2">
-                        <div className="relative flex-1 max-w-sm">
-                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                            <Input
-                                placeholder="Search templates..."
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                className="pl-9"
-                            />
-                        </div>
-                        <Select value={filters.status ?? 'all'} onValueChange={handleStatusFilter}>
-                            <SelectTrigger className="w-36">
-                                <SelectValue placeholder="All" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All</SelectItem>
-                                <SelectItem value="active">Active</SelectItem>
-                                <SelectItem value="inactive">Inactive</SelectItem>
-                            </SelectContent>
-                        </Select>
+            <div className="space-y-6 p-6">
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                    <h1 className="text-2xl font-bold flex items-center gap-2">
+                        <RefreshCw className="h-6 w-6" />
+                        Recurring Bills
+                    </h1>
+                    <PermissionGate permission="ap.create">
+                        <Button asChild>
+                            <Link href={route('recurring-bills.create')}>
+                                <Plus className="h-4 w-4 mr-1.5" /> New Template
+                            </Link>
+                        </Button>
+                    </PermissionGate>
+                </div>
+
+                {/* Filters */}
+                <div className="flex flex-wrap gap-3">
+                    <div className="relative flex-1 min-w-48">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Search templates..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="pl-9"
+                        />
                     </div>
-                    <Button asChild>
-                        <Link href={route('recurring-bills.create')}>
-                            <Plus className="mr-2 h-4 w-4" /> New Template
-                        </Link>
-                    </Button>
+                    <Select value={filters.status ?? 'all'} onValueChange={handleStatusFilter}>
+                        <SelectTrigger className="w-36">
+                            <SelectValue placeholder="All" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All</SelectItem>
+                            <SelectItem value="active">Active</SelectItem>
+                            <SelectItem value="inactive">Inactive</SelectItem>
+                        </SelectContent>
+                    </Select>
                 </div>
 
                 <div className="rounded-md border">
+                    <ScrollArea>
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -115,7 +127,7 @@ export default function RecurringBillsIndex({ templates, filters }: Props) {
                         <TableBody>
                             {templates.data.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
+                                    <TableCell colSpan={8} className="h-32 text-center text-muted-foreground">
                                         No recurring bill templates found
                                     </TableCell>
                                 </TableRow>
@@ -129,7 +141,7 @@ export default function RecurringBillsIndex({ templates, filters }: Props) {
                                         <TableCell className="text-right">{formatCurrency(tpl.amount)}</TableCell>
                                         <TableCell>{formatDateOnly(tpl.next_generate_date)}</TableCell>
                                         <TableCell>
-                                            <Badge variant={tpl.is_active ? 'default' : 'secondary'}>
+                                            <Badge variant={tpl.is_active ? 'success' : 'secondary'}>
                                                 {tpl.is_active ? 'Active' : 'Inactive'}
                                             </Badge>
                                         </TableCell>
@@ -155,8 +167,7 @@ export default function RecurringBillsIndex({ templates, filters }: Props) {
                                 ))
                             )}
                         </TableBody>
-                    </Table>
-                </div>
+                    </Table>                    </ScrollArea>                </div>
 
                 <Pagination data={templates} />
             </div>

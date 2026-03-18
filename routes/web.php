@@ -32,6 +32,8 @@ use App\Http\Controllers\SettingController;
 use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\QuotationController;
 use App\Http\Controllers\RecurringBillController;
+use App\Http\Controllers\RepairController;
+use App\Http\Controllers\BackupController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -236,6 +238,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
     Route::middleware('permission:stock.adjust')->group(function () {
         Route::post('stock/{product}/adjust', [StockController::class, 'adjust'])->name('stock.adjust');
+        Route::post('stock/{product}/internal-use', [StockController::class, 'internalUse'])->name('stock.internal-use');
         Route::post('stock/{product}/count', [StockController::class, 'inventoryCount'])->name('stock.count');
     });
     Route::middleware('permission:stock.manage_inventory')->group(function () {
@@ -250,6 +253,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('warranties/batch-record', [WarrantyController::class, 'batchRecordIndex'])
             ->name('warranties.batch-record')
             ->middleware('permission:warranties.record_serial');
+        Route::get('warranties/{warranty}/detail', [WarrantyController::class, 'detail'])->name('warranties.detail');
         Route::get('warranties/{warranty}', [WarrantyController::class, 'show'])->name('warranties.show');
     });
     Route::middleware('permission:warranties.record_serial')->group(function () {
@@ -444,20 +448,44 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     // Quotations
-    Route::middleware('permission:sales.create')->group(function () {
-        Route::get('quotations', [QuotationController::class, 'index'])->name('quotations.index');
+    Route::middleware('permission:quotations.create')->group(function () {
         Route::get('quotations/create', [QuotationController::class, 'create'])->name('quotations.create');
         Route::post('quotations', [QuotationController::class, 'store'])->name('quotations.store');
-        Route::get('quotations/{quotation}', [QuotationController::class, 'show'])->name('quotations.show');
-        Route::get('quotations/{quotation}/print', [QuotationController::class, 'printView'])->name('quotations.print');
-        Route::post('quotations/{quotation}/send-email', [QuotationController::class, 'sendEmail'])->name('quotations.send-email');
         Route::post('quotations/{quotation}/status', [QuotationController::class, 'updateStatus'])->name('quotations.update-status');
         Route::post('quotations/{quotation}/proceed-to-sale', [QuotationController::class, 'proceedToSale'])->name('quotations.proceed-to-sale');
+    });
+    Route::middleware('permission:quotations.view')->group(function () {
+        Route::get('quotations', [QuotationController::class, 'index'])->name('quotations.index');
+        Route::get('quotations/{quotation}', [QuotationController::class, 'show'])->name('quotations.show');
+        Route::get('quotations/{quotation}/print', [QuotationController::class, 'printView'])->name('quotations.print');
+    });
+    Route::middleware('permission:quotations.send')->group(function () {
+        Route::post('quotations/{quotation}/send-email', [QuotationController::class, 'sendEmail'])->name('quotations.send-email');
+    });
+    Route::middleware('permission:quotations.delete')->group(function () {
         Route::delete('quotations/{quotation}', [QuotationController::class, 'destroy'])->name('quotations.destroy');
     });
 
-    // Settings (admin only)
-    Route::middleware('permission:users.view')->group(function () {
+    // Repairs
+    Route::middleware('permission:repairs.create')->group(function () {
+        Route::get('repairs/create', [RepairController::class, 'create'])->name('repairs.create');
+        Route::post('repairs', [RepairController::class, 'store'])->name('repairs.store');
+    });
+    Route::middleware('permission:repairs.view')->group(function () {
+        Route::get('repairs', [RepairController::class, 'index'])->name('repairs.index');
+        Route::get('repairs/{repair}', [RepairController::class, 'show'])->name('repairs.show');
+        Route::get('repairs/{repair}/stub', [RepairController::class, 'stub'])->name('repairs.stub');
+    });
+    Route::middleware('permission:repairs.manage')->group(function () {
+        Route::post('repairs/{repair}/start', [RepairController::class, 'start'])->name('repairs.start');
+        Route::post('repairs/{repair}/complete', [RepairController::class, 'complete'])->name('repairs.complete');
+        Route::post('repairs/{repair}/fee', [RepairController::class, 'updateFee'])->name('repairs.update-fee');
+        Route::post('repairs/{repair}/components', [RepairController::class, 'addComponent'])->name('repairs.add-component');
+        Route::delete('repairs/{repair}/components/{component}', [RepairController::class, 'removeComponent'])->name('repairs.remove-component');
+    });
+
+    // Settings
+    Route::middleware('permission:settings.manage')->group(function () {
         Route::get('settings', [SettingController::class, 'index'])->name('settings.index');
         Route::post('settings', [SettingController::class, 'update'])->name('settings.update');
     });

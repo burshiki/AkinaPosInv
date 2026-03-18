@@ -14,16 +14,16 @@ import { Pagination } from '@/Components/ui/pagination';
 import { PermissionGate } from '@/Components/app/permission-gate';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useDebounce } from '@/hooks/use-debounce';
-import { Plus, Search, Eye, PackageCheck, XCircle, Trash2 } from 'lucide-react';
+import { Plus, Search, Eye, PackageCheck, XCircle, Trash2, ShoppingCart } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useConfirm } from '@/Components/app/confirm-dialog';
 import type { PurchaseOrder, PaginatedData, Product, Supplier } from '@/types';
 
-const STATUS_LABELS: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
+const STATUS_CFG: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' | 'success' }> = {
     draft:              { label: 'Draft',              variant: 'secondary' },
     approved:           { label: 'Approved',           variant: 'default' },
     partially_received: { label: 'Partial',            variant: 'outline' },
-    received:           { label: 'Received',           variant: 'default' },
+    received:           { label: 'Received',           variant: 'success' },
     cancelled:          { label: 'Cancelled',          variant: 'destructive' },
 };
 
@@ -141,43 +141,51 @@ export default function PurchaseOrdersIndex({ orders, filters, products, supplie
     };
 
     return (
-        <AuthenticatedLayout header="Purchase Orders">
+        <AuthenticatedLayout>
             <Head title="Purchase Orders" />
 
-            <div className="space-y-4">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex flex-1 items-center gap-2">
-                        <div className="relative flex-1 max-w-sm">
-                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                            <Input
-                                placeholder="Search PO number or supplier..."
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                className="pl-9"
-                            />
-                        </div>
-                        <Select value={filters.status ?? 'all'} onValueChange={handleStatusFilter}>
-                            <SelectTrigger className="w-48">
-                                <SelectValue placeholder="All Status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Status</SelectItem>
-                                <SelectItem value="draft">Draft</SelectItem>
-                                <SelectItem value="approved">Approved</SelectItem>
-                                <SelectItem value="partially_received">Partially Received</SelectItem>
-                                <SelectItem value="received">Received</SelectItem>
-                                <SelectItem value="cancelled">Cancelled</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
+            <div className="space-y-6 p-6">
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                    <h1 className="text-2xl font-bold flex items-center gap-2">
+                        <ShoppingCart className="h-6 w-6" />
+                        Purchase Orders
+                    </h1>
                     <PermissionGate permission="purchasing.create">
                         <Button onClick={openCreate}>
-                            <Plus className="mr-2 h-4 w-4" /> New PO
+                            <Plus className="h-4 w-4 mr-1.5" /> New PO
                         </Button>
                     </PermissionGate>
                 </div>
 
+                {/* Filters */}
+                <div className="flex flex-wrap gap-3">
+                    <div className="relative flex-1 min-w-48">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Search PO number or supplier..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="pl-9"
+                        />
+                    </div>
+                    <Select value={filters.status ?? 'all'} onValueChange={handleStatusFilter}>
+                        <SelectTrigger className="w-48">
+                            <SelectValue placeholder="All Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Status</SelectItem>
+                            <SelectItem value="draft">Draft</SelectItem>
+                            <SelectItem value="approved">Approved</SelectItem>
+                            <SelectItem value="partially_received">Partially Received</SelectItem>
+                            <SelectItem value="received">Received</SelectItem>
+                            <SelectItem value="cancelled">Cancelled</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+
                 <div className="rounded-md border">
+                    <ScrollArea>
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -193,13 +201,13 @@ export default function PurchaseOrdersIndex({ orders, filters, products, supplie
                         <TableBody>
                             {orders.data.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
+                                    <TableCell colSpan={7} className="h-32 text-center text-muted-foreground">
                                         No purchase orders found
                                     </TableCell>
                                 </TableRow>
                             ) : (
                                 orders.data.map((order) => {
-                                    const status = STATUS_LABELS[order.status] ?? { label: order.status, variant: 'secondary' as const };
+                                    const status = STATUS_CFG[order.status] ?? { label: order.status, variant: 'secondary' as const };
                                     return (
                                         <TableRow key={order.id}>
                                             <TableCell className="font-mono font-medium">
@@ -254,8 +262,7 @@ export default function PurchaseOrdersIndex({ orders, filters, products, supplie
                                 })
                             )}
                         </TableBody>
-                    </Table>
-                </div>
+                    </Table>                    </ScrollArea>                </div>
 
                 <Pagination data={orders} />
             </div>

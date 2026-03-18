@@ -41,6 +41,12 @@ class PermissionsSeeder extends Seeder
             'leave.view', 'leave.request', 'leave.approve',
             // Accounts Payable module
             'ap.view', 'ap.create', 'ap.pay', 'ap.void', 'ap.manage_recurring',
+            // Quotations module
+            'quotations.view', 'quotations.create', 'quotations.send', 'quotations.delete',
+            // Settings
+            'settings.manage',
+            // Repairs module
+            'repairs.view', 'repairs.create', 'repairs.manage',
         ];
 
         foreach ($permissions as $permission) {

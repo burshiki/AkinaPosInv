@@ -43,7 +43,8 @@ class SaleService
             $totalTax = 0;
 
             foreach ($validated['items'] as $item) {
-                $product = Product::find($item['product_id']);
+                // product_id can be null for service lines (e.g. repair fee)
+                $product = !empty($item['product_id']) ? Product::find($item['product_id']) : null;
                 $lineSubtotal = $item['quantity'] * $item['unit_price'];
 
                 // Per-item discount
@@ -107,10 +108,31 @@ class SaleService
 
             $lowStockProductIds = [];
 
+            $isRepairSale = !empty($validated['repair_job_id']);
+
             foreach ($itemsWithTax as $item) {
+                // Service line (repair fee, etc.) — no product, no stock deduction
+                if (empty($item['product_id'])) {
+                    SaleItem::create([
+                        'sale_id'         => $sale->id,
+                        'product_id'      => null,
+                        'product_name'    => $item['product_name'] ?? 'Service',
+                        'product_sku'     => null,
+                        'quantity'        => $item['quantity'],
+                        'unit_price'      => $item['unit_price'],
+                        'cost_price'      => 0,
+                        'tax_rate'        => $item['tax_rate'],
+                        'tax_amount'      => $item['tax_amount'],
+                        'subtotal'        => $item['quantity'] * $item['unit_price'],
+                        'discount_amount' => $item['item_discount_amount'],
+                        'discount_type'   => $item['item_discount_type'],
+                    ]);
+                    continue;
+                }
+
                 $product = Product::lockForUpdate()->findOrFail($item['product_id']);
 
-                if ($product->stock_quantity < $item['quantity']) {
+                if ($product->stock_quantity < $item['quantity'] && !$isRepairSale) {
                     throw new InsufficientStockException(
                         "Insufficient stock for {$product->name}"
                     );
@@ -195,6 +217,17 @@ class SaleService
             // Dispatch low stock alerts after transaction
             foreach ($lowStockProductIds as $productId) {
                 LowStockAlertJob::dispatch($productId);
+            }
+
+            // Link to repair job and mark as claimed
+            if (!empty($validated['repair_job_id'])) {
+                \App\Models\RepairJob::where('id', $validated['repair_job_id'])
+                    ->whereIn('status', ['pending', 'in_progress', 'done'])
+                    ->update([
+                        'sale_id'    => $sale->id,
+                        'status'     => 'claimed',
+                        'claimed_at' => now(),
+                    ]);
             }
 
             return $sale->load('items');

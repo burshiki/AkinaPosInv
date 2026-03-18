@@ -8,11 +8,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/Components/ui/table';
 import { ScrollArea } from '@/Components/ui/scroll-area';
 import { Pagination } from '@/Components/ui/pagination';
+import { Dialog, DialogContent } from '@/Components/ui/dialog';
 import { formatDate } from '@/lib/utils';
 import { useDebounce } from '@/hooks/use-debounce';
 import { Search, ShieldCheck, Eye, AlertCircle, Truck, PackageCheck } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import type { Warranty, PaginatedData } from '@/types';
+import { WarrantyDetailPanel } from '@/Components/app/WarrantyDetailPanel';
+import type { Warranty, PaginatedData, Supplier } from '@/types';
 
 const WARRANTY_STATUS: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' }> = {
     pending_serial: { label: 'Pending Serial', variant: 'outline' },
@@ -31,6 +33,23 @@ export default function WarrantiesIndex({ warranties, pendingCount, inRepairCoun
     const [search, setSearch] = useState(filters.search ?? '');
     const [status, setStatus] = useState(filters.status ?? 'all');
     const debouncedSearch = useDebounce(search, 300);
+
+    /* ── Warranty detail modal ── */
+    const [modalWarrantyId, setModalWarrantyId] = useState<number | null>(null);
+    const [modalData, setModalData]             = useState<{ warranty: Warranty; suppliers: Supplier[] } | null>(null);
+    const [modalLoading, setModalLoading]       = useState(false);
+
+    useEffect(() => {
+        if (modalWarrantyId === null) { setModalData(null); return; }
+        setModalLoading(true);
+        fetch(route('warranties.detail', modalWarrantyId), {
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            credentials: 'same-origin',
+        })
+            .then((r) => r.json())
+            .then((data) => { setModalData(data); setModalLoading(false); })
+            .catch(() => { setModalLoading(false); });
+    }, [modalWarrantyId]);
 
     useEffect(() => {
         router.get(
@@ -152,7 +171,7 @@ export default function WarrantiesIndex({ warranties, pendingCount, inRepairCoun
                                             <TableRow
                                                 key={w.id}
                                                 className="cursor-pointer hover:bg-muted/50"
-                                                onClick={() => router.get(route('warranties.show', w.id))}
+                                                onClick={() => setModalWarrantyId(w.id)}
                                             >
                                                 <TableCell className="font-mono text-sm">{w.receipt_number}</TableCell>
                                                 <TableCell>{w.product?.name ?? `#${w.product_id}`}</TableCell>
@@ -193,7 +212,7 @@ export default function WarrantiesIndex({ warranties, pendingCount, inRepairCoun
                                                     <Button
                                                         size="sm"
                                                         variant="ghost"
-                                                        onClick={() => router.get(route('warranties.show', w.id))}
+                                                        onClick={() => setModalWarrantyId(w.id)}
                                                     >
                                                         <Eye className="h-4 w-4 mr-1" />
                                                         View
@@ -210,6 +229,24 @@ export default function WarrantiesIndex({ warranties, pendingCount, inRepairCoun
 
                 <Pagination data={warranties} />
             </div>
+
+            {/* ── Warranty Detail Modal ── */}
+            <Dialog open={modalWarrantyId !== null} onOpenChange={(open) => { if (!open) setModalWarrantyId(null); }}>
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-6">
+                    {modalLoading || !modalData ? (
+                        <div className="flex items-center justify-center h-40 text-muted-foreground text-sm">
+                            {modalLoading ? 'Loading…' : 'Failed to load warranty.'}
+                        </div>
+                    ) : (
+                        <WarrantyDetailPanel
+                            warranty={modalData.warranty}
+                            suppliers={modalData.suppliers}
+                            isModal
+                            onClose={() => setModalWarrantyId(null)}
+                        />
+                    )}
+                </DialogContent>
+            </Dialog>
         </AuthenticatedLayout>
     );
 }

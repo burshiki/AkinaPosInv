@@ -13,10 +13,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { ReceiptPrinter } from '@/Components/app/receipt-printer';
 import { SalesCommandPalette } from '@/Components/app/sales-command-palette';
 import { formatCurrency } from '@/lib/utils';
-import { Minus, Plus, ShoppingCart, Trash2, Search, X, UserRound, UserPlus, Lock } from 'lucide-react';
+import { Minus, Plus, ShoppingCart, Trash2, Search, X, UserRound, UserPlus, Lock, Wrench } from 'lucide-react';
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import axios from 'axios';
-import type { Product, Category, BankAccount, Customer, CashDrawerSession, Sale, Quotation } from '@/types';
+import type { Product, Category, BankAccount, Customer, CashDrawerSession, Sale, Quotation, RepairJob } from '@/types';
 
 interface Props {
     products: Product[];
@@ -26,14 +26,18 @@ interface Props {
     drawerSession: CashDrawerSession;
     completedSale: Sale | null;
     initialQuotation: Quotation | null;
+    initialRepairJob: RepairJob | null;
+    repairQueue: Pick<RepairJob, 'id' | 'job_number' | 'customer_name' | 'customer_phone' | 'repair_fee' | 'completed_at'>[];
 }
 
 interface CartItem {
     product: Product;
     quantity: number;
+    /** Custom price override (used for repair job components, bypasses product.selling_price) */
+    unitPrice?: number;
 }
 
-export default function SalesCreate({ products, categories, bankAccounts, customers, drawerSession, completedSale, initialQuotation }: Props) {
+export default function SalesCreate({ products, categories, bankAccounts, customers, drawerSession, completedSale, initialQuotation, initialRepairJob, repairQueue }: Props) {
     const [cart, setCart] = useState<CartItem[]>([]);
     const [search, setSearch] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -54,6 +58,8 @@ export default function SalesCreate({ products, categories, bankAccounts, custom
     // Local mutable copy of customers so quick-adds appear immediately
     const [localCustomers, setLocalCustomers] = useState<Pick<Customer, 'id' | 'name' | 'phone' | 'email'>[]>(customers);
     // Quick-add customer dialog
+    const [repairFee, setRepairFee] = useState<string>(String(initialRepairJob?.repair_fee ?? '0'));
+    const [showRepairQueue, setShowRepairQueue] = useState(false);
     const [showQuickAdd, setShowQuickAdd] = useState(false);
     const [quickName, setQuickName] = useState('');
     const [quickPhone, setQuickPhone] = useState('');
@@ -68,8 +74,33 @@ export default function SalesCreate({ products, categories, bankAccounts, custom
         if (completedSale) setShowReceiptModal(true);
     }, [completedSale]);
 
-    // Pre-populate cart + customer from a quotation (once on mount)
+    // Pre-populate cart + customer from a quotation OR repair job (once on mount)
     useEffect(() => {
+        if (initialRepairJob) {
+            // Build cart from repair job components
+            const preCart: CartItem[] = [];
+            (initialRepairJob.components ?? []).forEach((comp) => {
+                const product = products.find((p) => p.id === comp.product_id);
+                if (!product) return;
+                preCart.push({ product, quantity: comp.quantity, unitPrice: comp.unit_price });
+            });
+            if (preCart.length > 0) setCart(preCart);
+            // Pre-fill customer
+            if (initialRepairJob.customer_id) {
+                const c = customers.find((c) => c.id === initialRepairJob.customer_id);
+                if (c) {
+                    setSelectedCustomerId(c.id);
+                    setCustomerName(c.name);
+                    setCustomerPhone(c.phone ?? '');
+                    setCustomerSearch(c.name);
+                }
+            } else {
+                setCustomerName(initialRepairJob.customer_name);
+                setCustomerPhone(initialRepairJob.customer_phone ?? '');
+                setCustomerSearch(initialRepairJob.customer_name);
+            }
+            return;
+        }
         if (!initialQuotation) return;
         // Build cart from matching products
         const preCart: CartItem[] = [];
@@ -195,12 +226,13 @@ export default function SalesCreate({ products, categories, bankAccounts, custom
     }, [localCustomers, customerSearch]);
 
     // Cart calculations
-    const subtotal = cart.reduce((sum, item) => sum + item.product.selling_price * item.quantity, 0);
+    const subtotal = cart.reduce((sum, item) => sum + (item.unitPrice ?? item.product.selling_price) * item.quantity, 0);
+    const repairFeeAmount = initialRepairJob ? (parseFloat(repairFee) || 0) : 0;
     const discountRaw = parseFloat(discountAmount) || 0;
     const discount = discountType === 'percent'
         ? Math.min(Math.round(subtotal * (discountRaw / 100) * 100) / 100, subtotal)
         : Math.min(discountRaw, subtotal);
-    const total = Math.max(0, subtotal - discount);
+    const total = Math.max(0, subtotal - discount + repairFeeAmount);
     const tendered = parseFloat(amountTendered) || 0;
     const change = paymentMethod === 'cash' ? Math.max(0, tendered - total) : 0;
 
@@ -208,15 +240,16 @@ export default function SalesCreate({ products, categories, bankAccounts, custom
         setCart((prev) => {
             const existing = prev.find((item) => item.product.id === product.id);
             if (existing) {
-                if (existing.quantity >= product.stock_quantity) return prev;
+                // Repair job sales are not capped by stock
+                if (!initialRepairJob && existing.quantity >= product.stock_quantity) return prev;
                 return prev.map((item) =>
                     item.product.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
                 );
             }
-            if (product.stock_quantity <= 0) return prev;
+            if (!initialRepairJob && product.stock_quantity <= 0) return prev;
             return [...prev, { product, quantity: 1 }];
         });
-    }, []);
+    }, [initialRepairJob]);
 
     const updateQuantity = (productId: number, quantity: number) => {
         if (quantity <= 0) {
@@ -224,9 +257,14 @@ export default function SalesCreate({ products, categories, bankAccounts, custom
             return;
         }
         setCart((prev) =>
-            prev.map((item) =>
-                item.product.id === productId ? { ...item, quantity: Math.min(quantity, item.product.stock_quantity) } : item
-            )
+            prev.map((item) => {
+                if (item.product.id !== productId) return item;
+                // No stock cap in repair job mode OR when a technician-set unit price is pre-loaded
+                if (initialRepairJob || item.unitPrice !== undefined) {
+                    return { ...item, quantity };
+                }
+                return { ...item, quantity: Math.min(quantity, item.product.stock_quantity) };
+            })
         );
     };
 
@@ -305,7 +343,8 @@ export default function SalesCreate({ products, categories, bankAccounts, custom
     };
 
     const handleSubmit = () => {
-        if (cart.length === 0) return;
+        const hasRepairFee = initialRepairJob && repairFeeAmount > 0;
+        if (cart.length === 0 && !hasRepairFee) return;
         if (paymentMethod === 'cash' && tendered < total) return;
         if (paymentMethod === 'online' && !bankAccountId) return;
         if (paymentMethod === 'credit' && !selectedCustomerId) return;
@@ -324,11 +363,20 @@ export default function SalesCreate({ products, categories, bankAccounts, custom
                 discount_amount: discountAmount || '0',
                 discount_type: discountType,
                 notes: notes || null,
-                items: cart.map((item) => ({
-                    product_id: item.product.id,
-                    quantity: item.quantity,
-                    unit_price: item.product.selling_price,
-                })),
+                repair_job_id: initialRepairJob?.id ?? null,
+                items: [
+                    ...cart.map((item) => ({
+                        product_id: item.product.id,
+                        quantity: item.quantity,
+                        unit_price: item.unitPrice ?? item.product.selling_price,
+                    })),
+                    ...(hasRepairFee ? [{
+                        product_id: null,
+                        product_name: 'Repair Service Fee',
+                        quantity: 1,
+                        unit_price: repairFeeAmount,
+                    }] : []),
+                ],
             },
             {
                 onSuccess: () => {
@@ -366,6 +414,18 @@ export default function SalesCreate({ products, categories, bankAccounts, custom
                     </Link>
                 </Button>
             </div>
+
+            {/* Repair job banner */}
+            {initialRepairJob && (
+                <div className="mb-3 flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200">
+                    <span className="font-semibold">Repair Job:</span>
+                    <span className="font-mono">{initialRepairJob.job_number}</span>
+                    <span className="text-muted-foreground">— {initialRepairJob.customer_name}</span>
+                    {initialRepairJob.components && initialRepairJob.components.length > 0 && (
+                        <span className="ml-1 text-xs opacity-70">({initialRepairJob.components.length} component{initialRepairJob.components.length !== 1 ? 's' : ''} pre-loaded)</span>
+                    )}
+                </div>
+            )}
 
             {/* Quotation banner */}
             {initialQuotation && (
@@ -413,7 +473,7 @@ export default function SalesCreate({ products, categories, bankAccounts, custom
                                 <button
                                     key={product.id}
                                     onClick={() => addToCart(product)}
-                                    disabled={product.stock_quantity <= 0}
+                                    disabled={!initialRepairJob && product.stock_quantity <= 0}
                                     className="rounded-lg border p-3 text-left transition-colors hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     <div className="font-medium text-sm truncate">{product.name}</div>
@@ -447,6 +507,20 @@ export default function SalesCreate({ products, categories, bankAccounts, custom
                                 >
                                     <span>⌘K</span>
                                 </button>
+                                {repairQueue.length > 0 && !initialRepairJob && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowRepairQueue(true)}
+                                        className="relative flex items-center gap-1 rounded border bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800 hover:bg-amber-100 dark:bg-amber-950 dark:text-amber-200 dark:hover:bg-amber-900"
+                                        title="Repair jobs waiting for payment"
+                                    >
+                                        <Wrench className="h-3 w-3" />
+                                        Repairs
+                                        <span className="ml-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-amber-600 text-[10px] text-white">
+                                            {repairQueue.length}
+                                        </span>
+                                    </button>
+                                )}
                                 {cart.length > 0 && (
                                     <Button variant="ghost" size="sm" onClick={() => setCart([])}>
                                         <X className="mr-1 h-3 w-3" /> Clear
@@ -556,7 +630,12 @@ export default function SalesCreate({ products, categories, bankAccounts, custom
                                         <div key={item.product.id} className="flex items-center gap-2 rounded-md border p-2">
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-sm font-medium truncate">{item.product.name}</p>
-                                                <p className="text-xs text-muted-foreground">{formatCurrency(item.product.selling_price)}</p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {formatCurrency(item.unitPrice ?? item.product.selling_price)}
+                                                    {item.unitPrice !== undefined && item.unitPrice !== item.product.selling_price && (
+                                                        <span className="ml-1 line-through opacity-50">{formatCurrency(item.product.selling_price)}</span>
+                                                    )}
+                                                </p>
                                             </div>
                                             <div className="flex items-center gap-1">
                                                 <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => updateQuantity(item.product.id, item.quantity - 1)}>
@@ -565,7 +644,7 @@ export default function SalesCreate({ products, categories, bankAccounts, custom
                                                 <input
                                                     type="number"
                                                     min={1}
-                                                    max={item.product.stock_quantity}
+                                                    max={(!initialRepairJob && item.unitPrice === undefined) ? item.product.stock_quantity : undefined}
                                                     value={item.quantity}
                                                     onChange={(e) => {
                                                         const val = parseInt(e.target.value, 10);
@@ -579,7 +658,7 @@ export default function SalesCreate({ products, categories, bankAccounts, custom
                                                 </Button>
                                             </div>
                                             <div className="text-right min-w-[4.5rem]">
-                                                <p className="text-sm font-bold">{formatCurrency(item.product.selling_price * item.quantity)}</p>
+                                                <p className="text-sm font-bold">{formatCurrency((item.unitPrice ?? item.product.selling_price) * item.quantity)}</p>
                                             </div>
                                             <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeFromCart(item.product.id)}>
                                                 <Trash2 className="h-3 w-3" />
@@ -597,6 +676,22 @@ export default function SalesCreate({ products, categories, bankAccounts, custom
                                     <span>Subtotal:</span>
                                     <span>{formatCurrency(subtotal)}</span>
                                 </div>
+                                {initialRepairJob && (
+                                    <div className="flex items-center justify-between gap-2">
+                                        <span>Repair Fee:</span>
+                                        <div className="flex items-center gap-1">
+                                            <span className="text-xs text-muted-foreground">₱</span>
+                                            <Input
+                                                type="number"
+                                                min="0"
+                                                step="0.01"
+                                                value={repairFee}
+                                                onChange={(e) => setRepairFee(e.target.value)}
+                                                className="h-7 w-24 text-right text-sm"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
                                 <div className="flex items-center justify-between gap-2">
                                     <span>Discount <kbd className="text-[10px] opacity-50">F4</kbd>:</span>
                                     <div className="flex items-center gap-1">
@@ -721,7 +816,7 @@ export default function SalesCreate({ products, categories, bankAccounts, custom
                                 size="lg"
                                 disabled={
                                     processing ||
-                                    cart.length === 0 ||
+                                    (cart.length === 0 && !(initialRepairJob && repairFeeAmount > 0)) ||
                                     (paymentMethod === 'cash' && tendered < total) ||
                                     (paymentMethod === 'online' && !bankAccountId) ||
                                     (paymentMethod === 'credit' && !selectedCustomerId)
@@ -753,6 +848,52 @@ export default function SalesCreate({ products, categories, bankAccounts, custom
             hasCustomer={!!selectedCustomerId}
             isCash={paymentMethod === 'cash'}
         />
+
+        {/* Repair Queue Dialog */}
+        <Dialog open={showRepairQueue} onOpenChange={setShowRepairQueue}>
+            <DialogContent className="max-w-lg">
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                        <Wrench className="h-5 w-5" />
+                        Repairs Ready for Payment
+                        <Badge className="ml-1">{repairQueue.length}</Badge>
+                    </DialogTitle>
+                </DialogHeader>
+                <div className="space-y-2 py-1 max-h-[60vh] overflow-y-auto">
+                    {repairQueue.map((job) => (
+                        <button
+                            key={job.id}
+                            type="button"
+                            className="flex w-full items-center justify-between rounded-lg border p-3 text-left hover:bg-accent transition-colors"
+                            onClick={() => {
+                                setShowRepairQueue(false);
+                                router.get(route('sales.create'), { repair_job_id: job.id });
+                            }}
+                        >
+                            <div className="min-w-0">
+                                <div className="flex items-center gap-2">
+                                    <span className="font-mono text-sm font-bold">{job.job_number}</span>
+                                    <Badge variant="secondary" className="text-xs">Done</Badge>
+                                </div>
+                                <p className="mt-0.5 text-sm font-medium truncate">{job.customer_name}</p>
+                                {job.customer_phone && (
+                                    <p className="text-xs text-muted-foreground">{job.customer_phone}</p>
+                                )}
+                            </div>
+                            <div className="ml-3 text-right shrink-0">
+                                {job.repair_fee != null && (
+                                    <p className="text-sm font-semibold text-green-600">{formatCurrency(job.repair_fee)}</p>
+                                )}
+                                <ShoppingCart className="ml-auto mt-1 h-4 w-4 text-muted-foreground" />
+                            </div>
+                        </button>
+                    ))}
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setShowRepairQueue(false)}>Close</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
 
         {/* Quick-Add Customer Dialog */}
         <Dialog open={showQuickAdd} onOpenChange={(open) => { if (!open) setShowQuickAdd(false); }}>

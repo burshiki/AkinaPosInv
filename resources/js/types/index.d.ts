@@ -108,6 +108,8 @@ export interface Warranty {
     expires_at: string | null;
     status: 'pending_serial' | 'active' | 'replaced' | 'void';
     notes: string | null;
+    check_reason: string | null;
+    tracking_number: string | null;
     product?: Product;
     sale?: Sale;
     claims?: WarrantyClaim[];
@@ -147,7 +149,7 @@ export interface Sale {
 export interface SaleItem {
     id: number;
     sale_id: number;
-    product_id: number;
+    product_id: number | null;
     product_name: string;
     product_sku: string;
     quantity: number;
@@ -899,4 +901,42 @@ export interface Quotation {
     created_at: string;
     updated_at: string;
     deleted_at?: string | null;
+}
+
+export interface RepairJobComponent {
+    id: number;
+    repair_job_id: number;
+    product_id: number;
+    product?: Product;
+    product_name: string;
+    product_sku: string | null;
+    quantity: number;
+    unit_price: number;
+    subtotal: number;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface RepairJob {
+    id: number;
+    job_number: string;
+    customer_id: number | null;
+    customer?: Customer;
+    customer_name: string;
+    customer_phone: string | null;
+    problem_description: string;
+    status: 'pending' | 'in_progress' | 'done' | 'claimed';
+    technician_id: number;
+    technician?: User;
+    repair_fee: number | null;
+    accepted_at: string;
+    started_at: string | null;
+    completed_at: string | null;
+    claimed_at: string | null;
+    sale_id: number | null;
+    sale?: Sale;
+    notes: string | null;
+    components?: RepairJobComponent[];
+    created_at: string;
+    updated_at: string;
 }

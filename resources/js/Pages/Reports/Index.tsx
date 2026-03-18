@@ -51,10 +51,19 @@ export default function ReportsIndex() {
     ];
 
     return (
-        <AuthenticatedLayout header="Reports">
+        <AuthenticatedLayout>
             <Head title="Reports" />
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-6 p-6">
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                    <h1 className="text-2xl font-bold flex items-center gap-2">
+                        <BarChart3 className="h-6 w-6" />
+                        Reports
+                    </h1>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
                 {reports.map((report) => (
                     <PermissionGate key={report.title} permission={report.permission}>
                         <Link href={report.href} className="block">
@@ -72,6 +81,7 @@ export default function ReportsIndex() {
                         </Link>
                     </PermissionGate>
                 ))}
+                </div>
             </div>
         </AuthenticatedLayout>
     );

@@ -82,20 +82,16 @@ export default function BankAccountsIndex({ bankAccounts, totalBalance }: Props)
     const inactive = bankAccounts.filter((a) => !a.is_active);
 
     return (
-        <AuthenticatedLayout header="Bank Accounts">
+        <AuthenticatedLayout>
             <Head title="Bank Accounts" />
 
-            <div className="space-y-6">
+            <div className="space-y-6 p-6">
+                {/* Header */}
                 <div className="flex items-center justify-between">
-                    <Card className="w-auto">
-                        <CardContent className="flex items-center gap-3 p-4">
-                            <Landmark className="h-8 w-8 text-muted-foreground" />
-                            <div>
-                                <p className="text-sm text-muted-foreground">Total Balance</p>
-                                <p className="text-2xl font-bold">{formatCurrency(totalBalance)}</p>
-                            </div>
-                        </CardContent>
-                    </Card>
+                    <h1 className="text-2xl font-bold flex items-center gap-2">
+                        <Landmark className="h-6 w-6" />
+                        Bank Accounts
+                    </h1>
                     <div className="flex gap-2">
                         <PermissionGate permission="banking.manage">
                             <Button onClick={openCreate}>
@@ -111,6 +107,17 @@ export default function BankAccountsIndex({ bankAccounts, totalBalance }: Props)
                         </PermissionGate>
                     </div>
                 </div>
+
+                {/* Total balance summary */}
+                <Card className="w-auto self-start">
+                    <CardContent className="flex items-center gap-3 p-4">
+                        <Landmark className="h-8 w-8 text-muted-foreground" />
+                        <div>
+                            <p className="text-sm text-muted-foreground">Total Balance</p>
+                            <p className="text-2xl font-bold">{formatCurrency(totalBalance)}</p>
+                        </div>
+                    </CardContent>
+                </Card>
 
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {active.map((account) => (

@@ -1,7 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { Button } from '@/Components/ui/button';
-import { Card, CardContent } from '@/Components/ui/card';
 import { Badge } from '@/Components/ui/badge';
 import { Input } from '@/Components/ui/input';
 import { Label } from '@/Components/ui/label';
@@ -13,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/Components/ui/dialog';
 import { PermissionGate } from '@/Components/app/permission-gate';
 import { formatDate } from '@/lib/utils';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, UserCog } from 'lucide-react';
 import { useState } from 'react';
 import { useConfirm } from '@/Components/app/confirm-dialog';
 import type { User } from '@/types';
@@ -59,6 +58,17 @@ const permissionLabels: Record<string, string> = {
     'leave.view': 'View Leave Requests',
     'leave.request': 'File Leave Requests',
     'leave.approve': 'Approve / Reject Leave',
+    // Quotations module
+    'quotations.view': 'View Quotations',
+    'quotations.create': 'Create / Manage Quotations',
+    'quotations.send': 'Send Quotation by Email',
+    'quotations.delete': 'Delete Quotations',
+    // Settings
+    'settings.manage': 'Manage Settings',
+    // Repairs module
+    'repairs.view': 'View Repairs',
+    'repairs.create': 'Accept Repairs',
+    'repairs.manage': 'Manage Repairs (Start / Done / Components)',
 };
 
 export default function UsersIndex({ users, allPermissions }: Props) {
@@ -144,20 +154,25 @@ export default function UsersIndex({ users, allPermissions }: Props) {
     };
 
     return (
-        <AuthenticatedLayout header="Users">
+        <AuthenticatedLayout>
             <Head title="Users" />
 
-            <div className="space-y-4">
-                <div className="flex justify-end">
+            <div className="space-y-6 p-6">
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                    <h1 className="text-2xl font-bold flex items-center gap-2">
+                        <UserCog className="h-6 w-6" />
+                        Users
+                    </h1>
                     <PermissionGate permission="users.create">
                         <Button onClick={openCreate}>
-                            <Plus className="mr-2 h-4 w-4" /> Add User
+                            <Plus className="h-4 w-4 mr-1.5" /> Add User
                         </Button>
                     </PermissionGate>
                 </div>
 
-                <Card>
-                    <CardContent className="p-0">
+                <div className="rounded-md border">
+                    <ScrollArea>
                         <Table>
                             <TableHeader>
                                 <TableRow>
@@ -170,7 +185,13 @@ export default function UsersIndex({ users, allPermissions }: Props) {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {users.map((user) => (
+                                {users.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
+                                            No users found
+                                        </TableCell>
+                                    </TableRow>
+                                ) : users.map((user) => (
                                     <TableRow key={user.id}>
                                         <TableCell className="font-medium">{user.name}</TableCell>
                                         <TableCell className="text-muted-foreground">{user.email}</TableCell>
@@ -209,17 +230,10 @@ export default function UsersIndex({ users, allPermissions }: Props) {
                                         </TableCell>
                                     </TableRow>
                                 ))}
-                                {users.length === 0 && (
-                                    <TableRow>
-                                        <TableCell colSpan={6} className="text-center text-muted-foreground">
-                                            No users found
-                                        </TableCell>
-                                    </TableRow>
-                                )}
                             </TableBody>
                         </Table>
-                    </CardContent>
-                </Card>
+                    </ScrollArea>
+                </div>
             </div>
 
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

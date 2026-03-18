@@ -1,5 +1,4 @@
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, router, useForm, Link } from '@inertiajs/react';
+import { router, useForm, Link } from '@inertiajs/react';
 import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import { Label } from '@/Components/ui/label';
@@ -19,27 +18,20 @@ import type { Warranty, WarrantyClaim, Supplier } from '@/types';
 
 /* ── Status display config ── */
 
-const WARRANTY_STATUS: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive' | 'success' }> = {
+const WARRANTY_STATUS: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive' }> = {
     pending_serial: { label: 'Pending Serial', variant: 'outline' },
-    active:         { label: 'Active',          variant: 'success' },
+    active:         { label: 'Active',          variant: 'default' },
     replaced:       { label: 'Replaced',        variant: 'secondary' },
     void:           { label: 'Voided',          variant: 'secondary' },
 };
 
-const CLAIM_STATUS: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive' | 'success' }> = {
-    open:      { label: 'Open',       variant: 'destructive' },
-    confirmed: { label: 'Confirmed',  variant: 'default' },
+const CLAIM_STATUS: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive' }> = {
+    open:      { label: 'Open',       variant: 'outline' },
+    confirmed: { label: 'Confirmed',  variant: 'destructive' },
     in_repair: { label: 'In Repair',  variant: 'secondary' },
-    resolved:  { label: 'Resolved',   variant: 'success' },
-    no_defect: { label: 'No Defect',  variant: 'success' },
+    resolved:  { label: 'Resolved',   variant: 'default' },
+    no_defect: { label: 'No Defect',  variant: 'default' },
 };
-
-/* ── Props ── */
-
-interface Props {
-    warranty:  Warranty;
-    suppliers: Supplier[];
-}
 
 /* ── Helper components ── */
 
@@ -78,9 +70,20 @@ function ChainNode({ w, isCurrent }: { w: Warranty; isCurrent?: boolean }) {
     );
 }
 
-/* ── Main page ── */
+/* ── Props ── */
 
-export default function WarrantyShow({ warranty, suppliers }: Props) {
+export interface WarrantyDetailPanelProps {
+    warranty:  Warranty;
+    suppliers: Supplier[];
+    /** Optional: shown as a back/close button when rendered inside a modal. */
+    onClose?: () => void;
+    /** When true, hides the breadcrumb "Back to Warranties" link (modal usage). */
+    isModal?: boolean;
+}
+
+/* ── Main panel ── */
+
+export function WarrantyDetailPanel({ warranty, suppliers, onClose, isModal }: WarrantyDetailPanelProps) {
     const isExpired    = !!warranty.expires_at && new Date(warranty.expires_at) < new Date();
     const statusCfg    = WARRANTY_STATUS[warranty.status] ?? WARRANTY_STATUS.active;
     const claims       = warranty.claims ?? [];
@@ -99,13 +102,13 @@ export default function WarrantyShow({ warranty, suppliers }: Props) {
     const [activeClaim$,         setActiveClaim$]         = useState<WarrantyClaim | null>(null);
 
     /* Forms */
-    const newClaimForm        = useForm({ issue_description: '' });
-    const serialForm          = useForm({ serial_number: '', notes: '' });
-    const confirmForm         = useForm({ issue_description: '' });
-    const noDefectForm        = useForm({ issue_description: '', resolution_notes: '' });
-    const resolveForm         = useForm({ resolution_type: '', supplier_id: '', tracking_number: '', received_serial_number: '', resolution_notes: '' });
-    const receiveBackForm     = useForm({ received_serial_number: '', resolution_notes: '' });
-    const sendDefectiveForm   = useForm({ supplier_id: '', defective_tracking_number: '' });
+    const newClaimForm         = useForm({ issue_description: '' });
+    const serialForm           = useForm({ serial_number: '', notes: '' });
+    const confirmForm          = useForm({ issue_description: '' });
+    const noDefectForm         = useForm({ issue_description: '', resolution_notes: '' });
+    const resolveForm          = useForm({ resolution_type: '', supplier_id: '', tracking_number: '', received_serial_number: '', resolution_notes: '' });
+    const receiveBackForm      = useForm({ received_serial_number: '', resolution_notes: '' });
+    const sendDefectiveForm    = useForm({ supplier_id: '', defective_tracking_number: '' });
     const receiveDefectiveForm = useForm({ resolution_notes: '' });
 
     /* Handlers */
@@ -131,6 +134,18 @@ export default function WarrantyShow({ warranty, suppliers }: Props) {
         setActiveClaim$(claim);
         receiveBackForm.reset();
         setReceiveBackOpen(true);
+    }
+
+    function openSendDefective(claim: WarrantyClaim) {
+        setActiveClaim$(claim);
+        sendDefectiveForm.reset();
+        setSendDefectiveOpen(true);
+    }
+
+    function openReceiveDefective(claim: WarrantyClaim) {
+        setActiveClaim$(claim);
+        receiveDefectiveForm.reset();
+        setReceiveDefectiveOpen(true);
     }
 
     function submitSerial(e: React.FormEvent) {
@@ -177,14 +192,12 @@ export default function WarrantyShow({ warranty, suppliers }: Props) {
         const hasStock = (warranty.product?.stock_quantity ?? 0) > 0;
 
         if (resolveForm.data.resolution_type === 'replacement' && hasStock) {
-            // Immediate replacement from store inventory
             resolveForm.post(route('warranty-claims.replace-from-stock', activeClaim$.id), {
                 onSuccess: () => setResolveOpen(false),
             });
             return;
         }
 
-        // Repair OR replacement via supplier (no stock)
         resolveForm.post(route('warranty-claims.send-to-supplier', activeClaim$.id), {
             onSuccess: () => setResolveOpen(false),
         });
@@ -196,18 +209,6 @@ export default function WarrantyShow({ warranty, suppliers }: Props) {
         receiveBackForm.post(route('warranty-claims.receive-back', activeClaim$.id), {
             onSuccess: () => setReceiveBackOpen(false),
         });
-    }
-
-    function openSendDefective(claim: WarrantyClaim) {
-        setActiveClaim$(claim);
-        sendDefectiveForm.reset();
-        setSendDefectiveOpen(true);
-    }
-
-    function openReceiveDefective(claim: WarrantyClaim) {
-        setActiveClaim$(claim);
-        receiveDefectiveForm.reset();
-        setReceiveDefectiveOpen(true);
     }
 
     function submitSendDefective(e: React.FormEvent) {
@@ -227,322 +228,327 @@ export default function WarrantyShow({ warranty, suppliers }: Props) {
     }
 
     return (
-        <AuthenticatedLayout>
-            <Head title={`Warranty #${warranty.id}`} />
+        <div className="space-y-6">
 
-            <div className="max-w-2xl mx-auto space-y-6 p-6">
-
-                {/* Breadcrumb */}
+            {/* Breadcrumb / back button */}
+            {!isModal && (
                 <Button variant="ghost" size="sm" asChild>
                     <Link href={route('warranties.index')}>
                         <ArrowLeft className="h-4 w-4 mr-1" /> Warranties
                     </Link>
                 </Button>
+            )}
 
-                {/* Header */}
-                <div className="flex items-start justify-between">
-                    <div>
-                        <h1 className="text-2xl font-bold flex items-center gap-2">
-                            <ShieldCheck className="h-5 w-5" />
-                            Warranty #{warranty.id}
-                        </h1>
-                        <p className="text-sm text-muted-foreground mt-0.5">
-                            {warranty.product?.name ?? `Product #${warranty.product_id}`}
-                            {warranty.customer_name && ` — ${warranty.customer_name}`}
-                        </p>
-                    </div>
-                    <div className="flex flex-col items-end gap-1">
-                        {isExpired && warranty.status === 'active'
-                            ? <Badge variant="secondary">Expired</Badge>
-                            : <Badge variant={statusCfg.variant}>{statusCfg.label}</Badge>
-                        }
-                        {activeClaim && (
-                            <Badge variant="destructive" className="text-xs">
-                                {CLAIM_STATUS[activeClaim.status]?.label} Claim
-                            </Badge>
-                        )}
-                    </div>
+            {/* Header */}
+            <div className="flex items-start justify-between">
+                <div>
+                    <h1 className="text-xl font-bold flex items-center gap-2">
+                        <ShieldCheck className="h-5 w-5" />
+                        Warranty #{warranty.id}
+                    </h1>
+                    <p className="text-sm text-muted-foreground mt-0.5">
+                        {warranty.product?.name ?? `Product #${warranty.product_id}`}
+                        {warranty.customer_name && ` — ${warranty.customer_name}`}
+                    </p>
                 </div>
-
-                {/* Warranty Details */}
-                <div className="rounded-lg border divide-y">
-                    <DetailRow label="Receipt #"  value={<span className="font-mono">{warranty.receipt_number}</span>} />
-                    <DetailRow label="Product"    value={warranty.product?.name ?? `#${warranty.product_id}`} />
-                    <DetailRow label="Customer"   value={warranty.customer_name ?? '—'} />
-                    <DetailRow label="Serial No." value={
-                        warranty.serial_number
-                            ? <span className="font-mono">{warranty.serial_number}</span>
-                            : <span className="text-muted-foreground">Not recorded</span>
-                    } />
-                    <DetailRow label="Coverage"   value={`${warranty.warranty_months} months`} />
-                    <DetailRow label="Activated"  value={warranty.activated_at ? formatDate(warranty.activated_at) : '—'} />
-                    <DetailRow label="Expires"    value={
-                        warranty.expires_at
-                            ? <span className={isExpired ? 'text-destructive font-medium' : ''}>{formatDate(warranty.expires_at)}</span>
-                            : '—'
-                    } />
-                    {warranty.notes && <DetailRow label="Notes" value={warranty.notes} />}
-                </div>
-
-                {/* Primary Actions */}
-                <div className="flex flex-wrap gap-2">
-                    {warranty.status === 'pending_serial' && (
-                        <PermissionGate permission="warranties.record_serial">
-                            <Button size="sm" onClick={() => { serialForm.reset(); setSerialOpen(true); }}>
-                                <ClipboardList className="h-4 w-4 mr-1.5" />
-                                Record Serial & Activate
-                            </Button>
-                        </PermissionGate>
+                <div className="flex flex-col items-end gap-1">
+                    {isExpired && warranty.status === 'active'
+                        ? <Badge variant="secondary">Expired</Badge>
+                        : <Badge variant={statusCfg.variant}>{statusCfg.label}</Badge>
+                    }
+                    {activeClaim && (
+                        <Badge variant="destructive" className="text-xs">
+                            {CLAIM_STATUS[activeClaim.status]?.label} Claim
+                        </Badge>
                     )}
-                    {warranty.status === 'active' && !isExpired && !activeClaim && (
-                        <PermissionGate permission="warranties.check">
-                            <Button size="sm" onClick={() => { newClaimForm.reset(); setNewClaimOpen(true); }}>
-                                <Plus className="h-4 w-4 mr-1.5" />
-                                New Claim
-                            </Button>
-                        </PermissionGate>
+                    {isModal && (
+                        <Button size="sm" variant="outline" asChild className="mt-1">
+                            <Link href={route('warranties.show', warranty.id)}>
+                                View Full Page
+                            </Link>
+                        </Button>
                     )}
                 </div>
+            </div>
 
-                {/* ── Claims ── */}
-                <div className="space-y-3">
-                    <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-2">
-                        <Wrench className="h-4 w-4" />
-                        Claims {claims.length > 0 && `(${claims.length})`}
-                    </h2>
+            {/* Warranty Details */}
+            <div className="rounded-lg border divide-y">
+                <DetailRow label="Receipt #"  value={<span className="font-mono">{warranty.receipt_number}</span>} />
+                <DetailRow label="Product"    value={warranty.product?.name ?? `#${warranty.product_id}`} />
+                <DetailRow label="Customer"   value={warranty.customer_name ?? '—'} />
+                <DetailRow label="Serial No." value={
+                    warranty.serial_number
+                        ? <span className="font-mono">{warranty.serial_number}</span>
+                        : <span className="text-muted-foreground">Not recorded</span>
+                } />
+                <DetailRow label="Coverage"   value={`${warranty.warranty_months} months`} />
+                <DetailRow label="Activated"  value={warranty.activated_at ? formatDate(warranty.activated_at) : '—'} />
+                <DetailRow label="Expires"    value={
+                    warranty.expires_at
+                        ? <span className={isExpired ? 'text-destructive font-medium' : ''}>{formatDate(warranty.expires_at)}</span>
+                        : '—'
+                } />
+                {warranty.notes && <DetailRow label="Notes" value={warranty.notes} />}
+            </div>
 
-                    {claims.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">No claims filed yet.</p>
-                    ) : (
-                        <div className="space-y-3">
-                            {claims.map((claim) => {
-                                const cfg = CLAIM_STATUS[claim.status] ?? CLAIM_STATUS.open;
-                                const isActive = ['open', 'confirmed', 'in_repair'].includes(claim.status);
-                                return (
-                                    <div
-                                        key={claim.id}
-                                        className={`rounded-lg border p-4 space-y-3 text-sm ${
-                                            isActive ? 'border-amber-300 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-800' : ''
-                                        }`}
-                                    >
-                                        {/* Claim header */}
-                                        <div className="flex items-center justify-between gap-2">
-                                            <div className="flex items-center gap-2">
-                                                <span className="font-mono font-semibold text-xs">{claim.claim_number}</span>
-                                                <span className="text-muted-foreground text-xs">{formatDate(claim.created_at)}</span>
-                                            </div>
-                                            <Badge variant={cfg.variant}>{cfg.label}</Badge>
+            {/* Primary Actions */}
+            <div className="flex flex-wrap gap-2">
+                {warranty.status === 'pending_serial' && (
+                    <PermissionGate permission="warranties.record_serial">
+                        <Button size="sm" onClick={() => { serialForm.reset(); setSerialOpen(true); }}>
+                            <ClipboardList className="h-4 w-4 mr-1.5" />
+                            Record Serial & Activate
+                        </Button>
+                    </PermissionGate>
+                )}
+                {warranty.status === 'active' && !isExpired && !activeClaim && (
+                    <PermissionGate permission="warranties.check">
+                        <Button size="sm" onClick={() => { newClaimForm.reset(); setNewClaimOpen(true); }}>
+                            <Plus className="h-4 w-4 mr-1.5" />
+                            New Claim
+                        </Button>
+                    </PermissionGate>
+                )}
+            </div>
+
+            {/* ── Claims ── */}
+            <div className="space-y-3">
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-2">
+                    <Wrench className="h-4 w-4" />
+                    Claims {claims.length > 0 && `(${claims.length})`}
+                </h2>
+
+                {claims.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No claims filed yet.</p>
+                ) : (
+                    <div className="space-y-3">
+                        {claims.map((claim) => {
+                            const cfg = CLAIM_STATUS[claim.status] ?? CLAIM_STATUS.open;
+                            const isActive = ['open', 'confirmed', 'in_repair'].includes(claim.status);
+                            return (
+                                <div
+                                    key={claim.id}
+                                    className={`rounded-lg border p-4 space-y-3 text-sm ${
+                                        isActive ? 'border-amber-300 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-800' : ''
+                                    }`}
+                                >
+                                    {/* Claim header */}
+                                    <div className="flex items-center justify-between gap-2">
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-mono font-semibold text-xs">{claim.claim_number}</span>
+                                            <span className="text-muted-foreground text-xs">{formatDate(claim.created_at)}</span>
                                         </div>
+                                        <Badge variant={cfg.variant}>{cfg.label}</Badge>
+                                    </div>
 
-                                        {/* Issue description */}
-                                        {claim.issue_description ? (
-                                            <div>
-                                                <p className="text-xs text-muted-foreground mb-0.5">Issue</p>
-                                                <p>{claim.issue_description}</p>
+                                    {/* Issue description */}
+                                    {claim.issue_description ? (
+                                        <div>
+                                            <p className="text-xs text-muted-foreground mb-0.5">Issue</p>
+                                            <p>{claim.issue_description}</p>
+                                        </div>
+                                    ) : (
+                                        <p className="text-muted-foreground italic">No issue description yet.</p>
+                                    )}
+
+                                    {/* Resolution info */}
+                                    {claim.resolution_type && (
+                                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                                            <span className="text-muted-foreground">Resolution</span>
+                                            <span className="capitalize font-medium">{claim.resolution_type}</span>
+                                            {claim.supplier && (
+                                                <>
+                                                    <span className="text-muted-foreground">Supplier</span>
+                                                    <span>{claim.supplier.name}</span>
+                                                </>
+                                            )}
+                                            {claim.tracking_number && (
+                                                <>
+                                                    <span className="text-muted-foreground">Tracking #</span>
+                                                    <span className="font-mono">{claim.tracking_number}</span>
+                                                </>
+                                            )}
+                                            {claim.received_serial_number && (
+                                                <>
+                                                    <span className="text-muted-foreground">Received Serial</span>
+                                                    <span className="font-mono">{claim.received_serial_number}</span>
+                                                </>
+                                            )}
+                                            {claim.resolution_notes && (
+                                                <>
+                                                    <span className="text-muted-foreground">Notes</span>
+                                                    <span>{claim.resolution_notes}</span>
+                                                </>
+                                            )}
+                                            {claim.resolved_at && (
+                                                <>
+                                                    <span className="text-muted-foreground">Resolved</span>
+                                                    <span>{formatDate(claim.resolved_at)}</span>
+                                                </>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* Defective unit tracking (from-stock replacements) */}
+                                    {claim.defective_status && (
+                                        <div className={`rounded-md border p-3 space-y-2 text-xs ${
+                                            claim.defective_status === 'received'
+                                                ? 'border-green-300 bg-green-50/50 dark:bg-green-950/20'
+                                                : 'border-orange-300 bg-orange-50/50 dark:bg-orange-950/20'
+                                        }`}>
+                                            <div className="flex items-center justify-between">
+                                                <span className="font-semibold flex items-center gap-1.5">
+                                                    <AlertTriangle className="h-3.5 w-3.5 text-orange-500" />
+                                                    Defective Unit — Supplier Return
+                                                </span>
+                                                <Badge variant="outline" className="text-xs">
+                                                    {claim.defective_status === 'pending'  && 'Awaiting Send'}
+                                                    {claim.defective_status === 'sent'     && 'Sent to Supplier'}
+                                                    {claim.defective_status === 'received' && 'Received — In Inventory'}
+                                                </Badge>
                                             </div>
-                                        ) : (
-                                            <p className="text-muted-foreground italic">No issue description yet.</p>
-                                        )}
-
-                                        {/* Resolution info */}
-                                        {claim.resolution_type && (
-                                            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-                                                <span className="text-muted-foreground">Resolution</span>
-                                                <span className="capitalize font-medium">{claim.resolution_type}</span>
-                                                {claim.supplier && (
-                                                    <>
-                                                        <span className="text-muted-foreground">Supplier</span>
-                                                        <span>{claim.supplier.name}</span>
-                                                    </>
+                                            {claim.defective_supplier && (
+                                                <p className="text-muted-foreground">Supplier: <span className="text-foreground">{claim.defective_supplier.name}</span></p>
+                                            )}
+                                            {claim.defective_tracking_number && (
+                                                <p className="text-muted-foreground">Tracking: <span className="font-mono text-foreground">{claim.defective_tracking_number}</span></p>
+                                            )}
+                                            {claim.defective_received_at && (
+                                                <p className="text-muted-foreground">Received: <span className="text-foreground">{formatDate(claim.defective_received_at)}</span></p>
+                                            )}
+                                            <PermissionGate permission="warranties.send_to_supplier">
+                                                {claim.defective_status === 'pending' && (
+                                                    <Button size="sm" variant="outline" className="h-7 text-xs border-orange-400 text-orange-700 hover:bg-orange-50" onClick={() => openSendDefective(claim)}>
+                                                        <Truck className="h-3.5 w-3.5 mr-1" />
+                                                        Send Defective to Supplier
+                                                    </Button>
                                                 )}
-                                                {claim.tracking_number && (
-                                                    <>
-                                                        <span className="text-muted-foreground">Tracking #</span>
-                                                        <span className="font-mono">{claim.tracking_number}</span>
-                                                    </>
-                                                )}
-                                                {claim.received_serial_number && (
-                                                    <>
-                                                        <span className="text-muted-foreground">Received Serial</span>
-                                                        <span className="font-mono">{claim.received_serial_number}</span>
-                                                    </>
-                                                )}
-                                                {claim.resolution_notes && (
-                                                    <>
-                                                        <span className="text-muted-foreground">Notes</span>
-                                                        <span>{claim.resolution_notes}</span>
-                                                    </>
-                                                )}
-                                                {claim.resolved_at && (
-                                                    <>
-                                                        <span className="text-muted-foreground">Resolved</span>
-                                                        <span>{formatDate(claim.resolved_at)}</span>
-                                                    </>
-                                                )}
-                                            </div>
-                                        )}
-
-                                        {/* Defective unit tracking (from-stock replacements) */}
-                                        {claim.defective_status && (
-                                            <div className={`rounded-md border p-3 space-y-2 text-xs ${
-                                                claim.defective_status === 'received'
-                                                    ? 'border-green-300 bg-green-50/50 dark:bg-green-950/20'
-                                                    : 'border-orange-300 bg-orange-50/50 dark:bg-orange-950/20'
-                                            }`}>
-                                                <div className="flex items-center justify-between">
-                                                    <span className="font-semibold flex items-center gap-1.5">
-                                                        <AlertTriangle className="h-3.5 w-3.5 text-orange-500" />
-                                                        Defective Unit — Supplier Return
-                                                    </span>
-                                                    <Badge variant="outline" className="text-xs">
-                                                        {claim.defective_status === 'pending'  && 'Awaiting Send'}
-                                                        {claim.defective_status === 'sent'     && 'Sent to Supplier'}
-                                                        {claim.defective_status === 'received' && 'Received — In Inventory'}
-                                                    </Badge>
-                                                </div>
-                                                {claim.defective_supplier && (
-                                                    <p className="text-muted-foreground">Supplier: <span className="text-foreground">{claim.defective_supplier.name}</span></p>
-                                                )}
-                                                {claim.defective_tracking_number && (
-                                                    <p className="text-muted-foreground">Tracking: <span className="font-mono text-foreground">{claim.defective_tracking_number}</span></p>
-                                                )}
-                                                {claim.defective_received_at && (
-                                                    <p className="text-muted-foreground">Received: <span className="text-foreground">{formatDate(claim.defective_received_at)}</span></p>
-                                                )}
-                                                <PermissionGate permission="warranties.send_to_supplier">
-                                                    {claim.defective_status === 'pending' && (
-                                                        <Button size="sm" variant="outline" className="h-7 text-xs border-orange-400 text-orange-700 hover:bg-orange-50" onClick={() => openSendDefective(claim)}>
-                                                            <Truck className="h-3.5 w-3.5 mr-1" />
-                                                            Send Defective to Supplier
-                                                        </Button>
-                                                    )}
-                                                    {claim.defective_status === 'sent' && (
-                                                        <div className="flex items-center gap-2 flex-wrap">
-                                                            <Button size="sm" variant="outline" className="h-7 text-xs border-slate-400 text-slate-700 hover:bg-slate-50" onClick={() => router.get(route('warranty-claims.supplier-sheet', claim.id))}>
-                                                                <Printer className="h-3.5 w-3.5 mr-1" />
-                                                                Print Supplier Sheet
-                                                            </Button>
-                                                            <Button size="sm" variant="outline" className="h-7 text-xs border-green-500 text-green-700 hover:bg-green-50" onClick={() => openReceiveDefective(claim)}>
-                                                                <PackageCheck className="h-3.5 w-3.5 mr-1" />
-                                                                Receive Back — Add to Inventory
-                                                            </Button>
-                                                        </div>
-                                                    )}
-                                                </PermissionGate>
-                                            </div>
-                                        )}
-
-                                        {/* Active claim actions */}
-                                        {isActive && (
-                                            <div className="flex flex-wrap gap-2 pt-1 border-t">
-                                                {claim.status === 'open' && (
-                                                    <PermissionGate permission="warranties.check">
-                                                        <Button size="sm" onClick={() => openConfirm(claim)}>
-                                                            <CheckCircle2 className="h-4 w-4 mr-1.5" />
-                                                            Confirm Issue
-                                                        </Button>
-                                                        <Button size="sm" variant="outline" onClick={() => openNoDefect(claim)}>
-                                                            <ThumbsUp className="h-4 w-4 mr-1.5" />
-                                                            No Defect Found
-                                                        </Button>
-                                                    </PermissionGate>
-                                                )}
-                                                {claim.status === 'confirmed' && (
-                                                    <PermissionGate permission="warranties.send_to_supplier">
-                                                        <Button size="sm" onClick={() => openResolve(claim)}>
-                                                            <ShieldCheck className="h-4 w-4 mr-1.5" />
-                                                            Resolve — Repair / Replace / Refund
-                                                        </Button>
-                                                    </PermissionGate>
-                                                )}
-                                                {claim.status === 'in_repair' && (
-                                                    <div className="flex items-center gap-3 w-full flex-wrap">
-                                                        {claim.tracking_number && (
-                                                            <span className="text-xs text-muted-foreground font-mono">
-                                                                Tracking: {claim.tracking_number}
-                                                            </span>
-                                                        )}
-                                                        <Button
-                                                            size="sm"
-                                                            variant="outline"
-                                                            className="border-slate-400 text-slate-700 hover:bg-slate-50"
-                                                            onClick={() => router.get(route('warranty-claims.supplier-sheet', claim.id))}
-                                                        >
-                                                            <Printer className="h-4 w-4 mr-1.5" />
+                                                {claim.defective_status === 'sent' && (
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <Button size="sm" variant="outline" className="h-7 text-xs border-slate-400 text-slate-700 hover:bg-slate-50" onClick={() => router.get(route('warranty-claims.supplier-sheet', claim.id))}>
+                                                            <Printer className="h-3.5 w-3.5 mr-1" />
                                                             Print Supplier Sheet
                                                         </Button>
+                                                        <Button size="sm" variant="outline" className="h-7 text-xs border-green-500 text-green-700 hover:bg-green-50" onClick={() => openReceiveDefective(claim)}>
+                                                            <PackageCheck className="h-3.5 w-3.5 mr-1" />
+                                                            Receive Back — Add to Inventory
+                                                        </Button>
+                                                    </div>
+                                                )}
+                                            </PermissionGate>
+                                        </div>
+                                    )}
+
+                                    {/* Active claim actions */}
+                                    {isActive && (
+                                        <div className="flex flex-wrap gap-2 pt-1 border-t">
+                                            {claim.status === 'open' && (
+                                                <PermissionGate permission="warranties.check">
+                                                    <Button size="sm" onClick={() => openConfirm(claim)}>
+                                                        <CheckCircle2 className="h-4 w-4 mr-1.5" />
+                                                        Confirm Issue
+                                                    </Button>
+                                                    <Button size="sm" variant="outline" onClick={() => openNoDefect(claim)}>
+                                                        <ThumbsUp className="h-4 w-4 mr-1.5" />
+                                                        No Defect Found
+                                                    </Button>
+                                                </PermissionGate>
+                                            )}
+                                            {claim.status === 'confirmed' && (
+                                                <PermissionGate permission="warranties.send_to_supplier">
+                                                    <Button size="sm" onClick={() => openResolve(claim)}>
+                                                        <ShieldCheck className="h-4 w-4 mr-1.5" />
+                                                        Resolve — Repair / Replace / Refund
+                                                    </Button>
+                                                </PermissionGate>
+                                            )}
+                                            {claim.status === 'in_repair' && (
+                                                <div className="flex items-center gap-3 w-full flex-wrap">
+                                                    {claim.tracking_number && (
+                                                        <span className="text-xs text-muted-foreground font-mono">
+                                                            Tracking: {claim.tracking_number}
+                                                        </span>
+                                                    )}
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        className="border-slate-400 text-slate-700 hover:bg-slate-50"
+                                                        onClick={() => router.get(route('warranty-claims.supplier-sheet', claim.id))}
+                                                    >
+                                                        <Printer className="h-4 w-4 mr-1.5" />
+                                                        Print Supplier Sheet
+                                                    </Button>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        className="border-blue-400 text-blue-700 hover:bg-blue-50"
+                                                        onClick={() => router.get(route('warranty-claims.claiming-stub', claim.id))}
+                                                    >
+                                                        <Printer className="h-4 w-4 mr-1.5" />
+                                                        Print Claiming Stub
+                                                    </Button>
+                                                    <PermissionGate permission="warranties.send_to_supplier">
                                                         <Button
                                                             size="sm"
                                                             variant="outline"
-                                                            className="border-blue-400 text-blue-700 hover:bg-blue-50"
-                                                            onClick={() => router.get(route('warranty-claims.claiming-stub', claim.id))}
+                                                            className="border-green-500 text-green-700 hover:bg-green-50"
+                                                            onClick={() => openReceiveBack(claim)}
                                                         >
-                                                            <Printer className="h-4 w-4 mr-1.5" />
-                                                            Print Claiming Stub
+                                                            <PackageCheck className="h-4 w-4 mr-1.5" />
+                                                            Receive Back
                                                         </Button>
-                                                        <PermissionGate permission="warranties.send_to_supplier">
-                                                            <Button
-                                                                size="sm"
-                                                                variant="outline"
-                                                                className="border-green-500 text-green-700 hover:bg-green-50"
-                                                                onClick={() => openReceiveBack(claim)}
-                                                            >
-                                                                <PackageCheck className="h-4 w-4 mr-1.5" />
-                                                                Receive Back
-                                                            </Button>
-                                                        </PermissionGate>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
+                                                    </PermissionGate>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
 
-                                        {/* Print stub — outside isActive, always visible for resolved repairs */}
-                                        {claim.status === 'resolved' && claim.resolution_type === 'repair' && (
-                                            <div className="pt-2 border-t">
-                                                <Button
-                                                    size="sm"
-                                                    variant="outline"
-                                                    className="border-blue-400 text-blue-700 hover:bg-blue-50"
-                                                    onClick={() => router.get(route('warranty-claims.claiming-stub', claim.id))}
-                                                >
-                                                    <Printer className="h-4 w-4 mr-1.5" />
-                                                    Print Claiming Stub
-                                                </Button>
-                                            </div>
-                                        )}
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
-                </div>
-
-                {/* ── Replacement Chain ── */}
-                {hasChain && (
-                    <div className="space-y-3">
-                        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-2">
-                            <History className="h-4 w-4" />
-                            Replacement Chain
-                        </h2>
-                        <div className="flex items-center gap-2 flex-wrap">
-                            {warranty.parent_warranty && (
-                                <>
-                                    <ChainNode w={warranty.parent_warranty} />
-                                    <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                                </>
-                            )}
-                            <ChainNode w={warranty} isCurrent />
-                            {warranty.child_warranty && (
-                                <>
-                                    <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                                    <ChainNode w={warranty.child_warranty} />
-                                </>
-                            )}
-                        </div>
-                        <p className="text-xs text-muted-foreground">Click a node to view that warranty.</p>
+                                    {/* Print stub — outside isActive, always visible for resolved repairs */}
+                                    {claim.status === 'resolved' && claim.resolution_type === 'repair' && (
+                                        <div className="pt-2 border-t">
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="border-blue-400 text-blue-700 hover:bg-blue-50"
+                                                onClick={() => router.get(route('warranty-claims.claiming-stub', claim.id))}
+                                            >
+                                                <Printer className="h-4 w-4 mr-1.5" />
+                                                Print Claiming Stub
+                                            </Button>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
                     </div>
                 )}
             </div>
+
+            {/* ── Replacement Chain ── */}
+            {hasChain && (
+                <div className="space-y-3">
+                    <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-2">
+                        <History className="h-4 w-4" />
+                        Replacement Chain
+                    </h2>
+                    <div className="flex items-center gap-2 flex-wrap">
+                        {warranty.parent_warranty && (
+                            <>
+                                <ChainNode w={warranty.parent_warranty} />
+                                <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                            </>
+                        )}
+                        <ChainNode w={warranty} isCurrent />
+                        {warranty.child_warranty && (
+                            <>
+                                <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                                <ChainNode w={warranty.child_warranty} />
+                            </>
+                        )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">Click a node to view that warranty.</p>
+                </div>
+            )}
 
             {/* ── Record Serial Dialog ── */}
             <Dialog open={serialOpen} onOpenChange={setSerialOpen}>
@@ -898,6 +904,7 @@ export default function WarrantyShow({ warranty, suppliers }: Props) {
                     )}
                 </DialogContent>
             </Dialog>
+
             {/* ── Send Defective to Supplier Dialog ── */}
             <Dialog open={sendDefectiveOpen} onOpenChange={setSendDefectiveOpen}>
                 <DialogContent className="max-w-md">
@@ -991,6 +998,6 @@ export default function WarrantyShow({ warranty, suppliers }: Props) {
                     )}
                 </DialogContent>
             </Dialog>
-        </AuthenticatedLayout>
+        </div>
     );
 }

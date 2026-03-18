@@ -56,6 +56,7 @@ class AuthenticatedSessionController extends Controller
             'inventory.create'       => '/products',
             'sales.create'           => '/sales/create',
             'sales.view'             => '/sales',
+            'quotations.view'        => '/quotations',
             'warranties.view'        => '/warranties',
             'banking.view'           => '/bank-accounts',
             'debts.view'             => '/debts',

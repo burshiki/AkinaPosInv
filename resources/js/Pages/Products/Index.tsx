@@ -16,7 +16,7 @@ import { StockBadge } from '@/Components/app/stock-badge';
 import { PermissionGate } from '@/Components/app/permission-gate';
 import { formatCurrency } from '@/lib/utils';
 import { useDebounce } from '@/hooks/use-debounce';
-import { Plus, Search, Eye, Trash2 } from 'lucide-react';
+import { Plus, Search, Eye, Pencil, Trash2, Package } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useConfirm } from '@/Components/app/confirm-dialog';
 import type { Product, Category, PaginatedData } from '@/types';
@@ -32,6 +32,7 @@ export default function ProductsIndex({ products, categories, filters }: Props) 
     const [search, setSearch] = useState(filters.search ?? '');
     const debouncedSearch = useDebounce(search, 300);
     const [dialogOpen, setDialogOpen] = useState(false);
+    const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
     const form = useForm({
         name: '',
@@ -48,6 +49,8 @@ export default function ProductsIndex({ products, categories, filters }: Props) 
         has_warranty: false as boolean,
         warranty_months: '' as string,
         is_active: true as boolean,
+        tax_rate: '' as string,
+        is_vat_exempt: false as boolean,
     });
 
     useEffect(() => {
@@ -67,14 +70,45 @@ export default function ProductsIndex({ products, categories, filters }: Props) 
     };
 
     const openCreate = () => {
-        form.setData({ name: '', sku: '', barcode: '', description: '', category_id: '', cost_price: '', selling_price: '', stock_quantity: '0', low_stock_threshold: '10', is_assembled: false, is_component: false, has_warranty: false, warranty_months: '', is_active: true });
+        form.setData({ name: '', sku: '', barcode: '', description: '', category_id: '', cost_price: '', selling_price: '', stock_quantity: '0', low_stock_threshold: '10', is_assembled: false, is_component: false, has_warranty: false, warranty_months: '', is_active: true, tax_rate: '', is_vat_exempt: false });
         form.clearErrors();
+        setEditingProduct(null);
+        setDialogOpen(true);
+    };
+
+    const openEdit = (product: Product) => {
+        form.setData({
+            name: product.name,
+            sku: product.sku ?? '',
+            barcode: product.barcode ?? '',
+            description: product.description ?? '',
+            category_id: product.category_id ? String(product.category_id) : '',
+            cost_price: String(product.cost_price ?? ''),
+            selling_price: String(product.selling_price ?? ''),
+            stock_quantity: String(product.stock_quantity ?? 0),
+            low_stock_threshold: String(product.low_stock_threshold ?? 10),
+            is_assembled: !!product.is_assembled,
+            is_component: !!product.is_component,
+            has_warranty: !!product.has_warranty,
+            warranty_months: product.warranty_months ? String(product.warranty_months) : '',
+            is_active: product.is_active !== false,
+            tax_rate: product.tax_rate != null ? String(product.tax_rate) : '',
+            is_vat_exempt: !!product.is_vat_exempt,
+        });
+        form.clearErrors();
+        setEditingProduct(product);
         setDialogOpen(true);
     };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        form.post(route('products.store'), { onSuccess: () => setDialogOpen(false) });
+        if (editingProduct) {
+            form.put(route('products.update', editingProduct.id), {
+                onSuccess: () => { setDialogOpen(false); setEditingProduct(null); },
+            });
+        } else {
+            form.post(route('products.store'), { onSuccess: () => setDialogOpen(false) });
+        }
     };
 
     const handleDelete = async (product: Product) => {
@@ -89,48 +123,55 @@ export default function ProductsIndex({ products, categories, filters }: Props) 
     };
 
     return (
-        <AuthenticatedLayout header="Products">
+        <AuthenticatedLayout>
             <Head title="Products" />
 
-            <div className="space-y-4">
-                {/* Toolbar */}
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex flex-1 items-center gap-2">
-                        <div className="relative flex-1 max-w-sm">
-                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                            <Input
-                                placeholder="Search products..."
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                className="pl-9"
-                            />
-                        </div>
-                        <Select
-                            value={filters.category_id ?? 'all'}
-                            onValueChange={handleCategoryFilter}
-                        >
-                            <SelectTrigger className="w-48">
-                                <SelectValue placeholder="All Categories" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Categories</SelectItem>
-                                {categories.map((cat) => (
-                                    <SelectItem key={cat.id} value={String(cat.id)}>
-                                        {cat.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
+            <div className="space-y-6 p-6">
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                    <h1 className="text-2xl font-bold flex items-center gap-2">
+                        <Package className="h-6 w-6" />
+                        Products
+                    </h1>
                     <PermissionGate permission="inventory.create">
                         <Button onClick={openCreate}>
-                            <Plus className="mr-2 h-4 w-4" /> Add Product
+                            <Plus className="h-4 w-4 mr-1.5" /> Add Product
                         </Button>
                     </PermissionGate>
                 </div>
 
+                {/* Filters */}
+                <div className="flex flex-wrap gap-3">
+                    <div className="relative flex-1 min-w-48">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Search products..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="pl-9"
+                        />
+                    </div>
+                    <Select
+                        value={filters.category_id ?? 'all'}
+                        onValueChange={handleCategoryFilter}
+                    >
+                        <SelectTrigger className="w-48">
+                            <SelectValue placeholder="All Categories" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Categories</SelectItem>
+                            {categories.map((cat) => (
+                                <SelectItem key={cat.id} value={String(cat.id)}>
+                                    {cat.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+
                 {/* Table */}
                 <div className="rounded-md border">
+                    <ScrollArea>
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -147,7 +188,7 @@ export default function ProductsIndex({ products, categories, filters }: Props) 
                         <TableBody>
                             {products.data.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                                    <TableCell colSpan={8} className="h-32 text-center text-muted-foreground">
                                         No products found
                                     </TableCell>
                                 </TableRow>
@@ -175,6 +216,11 @@ export default function ProductsIndex({ products, categories, filters }: Props) 
                                                 <Button variant="ghost" size="icon" className="h-8 w-8" title="View" asChild>
                                                     <Link href={route('products.show', product.id)}><Eye className="h-4 w-4" /></Link>
                                                 </Button>
+                                                <PermissionGate permission="inventory.edit">
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8" title="Edit" onClick={() => openEdit(product)}>
+                                                        <Pencil className="h-4 w-4" />
+                                                    </Button>
+                                                </PermissionGate>
                                                 <PermissionGate permission="inventory.delete">
                                                     <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" title="Delete" onClick={() => handleDelete(product)}>
                                                         <Trash2 className="h-4 w-4" />
@@ -186,16 +232,18 @@ export default function ProductsIndex({ products, categories, filters }: Props) 
                                 ))
                             )}
                         </TableBody>
-                    </Table>
-                </div>
+                    </Table>                    </ScrollArea>                </div>
 
                 <Pagination data={products} />
             </div>
 
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) setEditingProduct(null); }}>
                 <DialogContent className="max-w-2xl">
                     <DialogHeader>
-                        <DialogTitle>New Product</DialogTitle>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Package className="h-5 w-5" />
+                            {editingProduct ? `Edit: ${editingProduct.name}` : 'New Product'}
+                        </DialogTitle>
                     </DialogHeader>
                     <ScrollArea className="max-h-[70vh] pr-4">
                         <form id="product-form" onSubmit={handleSubmit} className="space-y-4 py-1">
@@ -297,6 +345,19 @@ export default function ProductsIndex({ products, categories, filters }: Props) 
                                     </div>
                                 )}
                             </div>
+                            {editingProduct && (
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="p_tax_rate">Tax Rate (%)</Label>
+                                        <Input id="p_tax_rate" type="number" step="0.01" min="0" value={form.data.tax_rate} onChange={(e) => form.setData('tax_rate', e.target.value)} />
+                                        {form.errors.tax_rate && <p className="text-sm text-destructive">{form.errors.tax_rate}</p>}
+                                    </div>
+                                    <div className="flex items-end gap-2 pb-0.5">
+                                        <Checkbox id="p_vat_exempt" checked={form.data.is_vat_exempt} onCheckedChange={(v) => form.setData('is_vat_exempt', !!v)} />
+                                        <Label htmlFor="p_vat_exempt">VAT Exempt</Label>
+                                    </div>
+                                </div>
+                            )}
                             {form.data.is_assembled && (
                                 <p className="text-sm text-muted-foreground rounded-md bg-muted px-3 py-2">
                                     Cost will be auto-computed when you define the Bill of Materials in <strong>Assemblies</strong>.
@@ -307,7 +368,7 @@ export default function ProductsIndex({ products, categories, filters }: Props) 
                     <DialogFooter>
                         <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
                         <Button type="submit" form="product-form" disabled={form.processing}>
-                            {form.processing ? 'Saving...' : 'Create Product'}
+                            {form.processing ? 'Saving...' : editingProduct ? 'Save Changes' : 'Create Product'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

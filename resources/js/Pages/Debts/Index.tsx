@@ -5,6 +5,7 @@ import { Input } from '@/Components/ui/input';
 import { Badge } from '@/Components/ui/badge';
 import { Card, CardContent } from '@/Components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/Components/ui/table';
+import { ScrollArea } from '@/Components/ui/scroll-area';
 import { formatCurrency } from '@/lib/utils';
 import { useDebounce } from '@/hooks/use-debounce';
 import { Search, Eye, CreditCard } from 'lucide-react';
@@ -38,11 +39,16 @@ export default function DebtsIndex({ customers, filters, totalOutstanding }: Pro
     }, [debouncedSearch]);
 
     return (
-        <AuthenticatedLayout header="Customer Debts">
+        <AuthenticatedLayout>
             <Head title="Customer Debts" />
 
-            <div className="space-y-4">
+            <div className="space-y-6 p-6">
+                {/* Header */}
                 <div className="flex items-center justify-between">
+                    <h1 className="text-2xl font-bold flex items-center gap-2">
+                        <CreditCard className="h-6 w-6" />
+                        Customer Debts
+                    </h1>
                     <Card className="w-auto">
                         <CardContent className="flex items-center gap-3 p-4">
                             <CreditCard className="h-8 w-8 text-muted-foreground" />
@@ -65,6 +71,7 @@ export default function DebtsIndex({ customers, filters, totalOutstanding }: Pro
                 </div>
 
                 <div className="rounded-md border">
+                    <ScrollArea>
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -80,7 +87,7 @@ export default function DebtsIndex({ customers, filters, totalOutstanding }: Pro
                         <TableBody>
                             {customers.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                                    <TableCell colSpan={7} className="h-32 text-center text-muted-foreground">
                                         No outstanding debts
                                     </TableCell>
                                 </TableRow>
@@ -108,8 +115,7 @@ export default function DebtsIndex({ customers, filters, totalOutstanding }: Pro
                                 ))
                             )}
                         </TableBody>
-                    </Table>
-                </div>
+                    </Table>                    </ScrollArea>                </div>
             </div>
         </AuthenticatedLayout>
     );

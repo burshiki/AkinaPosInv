@@ -2,15 +2,17 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router } from '@inertiajs/react';
 import { Button } from '@/Components/ui/button';
 import { Badge } from '@/Components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { Input } from '@/Components/ui/input';
 import { Label } from '@/Components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/Components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/Components/ui/dialog';
+import { ScrollArea } from '@/Components/ui/scroll-area';
+import { Pagination } from '@/Components/ui/pagination';
 import { PermissionGate } from '@/Components/app/permission-gate';
+import { useConfirm } from '@/Components/app/confirm-dialog';
 import { formatCurrency } from '@/lib/utils';
-import { Plus, Trash2, Percent, DollarSign, Gift } from 'lucide-react';
+import { Plus, Pencil, Trash2, Percent, DollarSign, Gift } from 'lucide-react';
 import { useState, FormEvent } from 'react';
 import type { Promotion, PaginatedData } from '@/types';
 
@@ -32,7 +34,9 @@ const typeLabels = {
 };
 
 export default function PromotionsIndex({ promotions, filters }: Props) {
-    const [showCreate, setShowCreate] = useState(false);
+    const confirm = useConfirm();
+    const [dialogMode, setDialogMode] = useState<'create' | 'edit' | null>(null);
+    const [editTarget, setEditTarget] = useState<Promotion | null>(null);
     const [processing, setProcessing] = useState(false);
     const [form, setForm] = useState({
         name: '',
@@ -53,10 +57,35 @@ export default function PromotionsIndex({ promotions, filters }: Props) {
         router.get(route('promotions.index'), { status: status || undefined }, { preserveState: true });
     }
 
-    function handleCreate(e: FormEvent) {
+    function openCreate() {
+        resetForm();
+        setEditTarget(null);
+        setDialogMode('create');
+    }
+
+    function openEdit(promo: Promotion) {
+        setForm({
+            name: promo.name,
+            description: promo.description ?? '',
+            type: promo.type as 'percentage' | 'fixed_amount' | 'buy_x_get_y',
+            value: String(promo.value),
+            buy_quantity: promo.buy_quantity != null ? String(promo.buy_quantity) : '',
+            get_quantity: promo.get_quantity != null ? String(promo.get_quantity) : '',
+            min_purchase: promo.min_purchase != null ? String(promo.min_purchase) : '',
+            starts_at: promo.starts_at ? String(promo.starts_at).split('T')[0] : '',
+            ends_at: promo.ends_at ? String(promo.ends_at).split('T')[0] : '',
+            applies_to: promo.applies_to as 'all' | 'product' | 'category',
+            customer_tier: promo.customer_tier ?? '',
+            usage_limit: promo.usage_limit != null ? String(promo.usage_limit) : '',
+        });
+        setEditTarget(promo);
+        setDialogMode('edit');
+    }
+
+    function handleSubmit(e: FormEvent) {
         e.preventDefault();
         setProcessing(true);
-        router.post(route('promotions.store'), {
+        const payload = {
             ...form,
             value: parseFloat(form.value) || 0,
             buy_quantity: form.buy_quantity ? parseInt(form.buy_quantity) : null,
@@ -66,10 +95,18 @@ export default function PromotionsIndex({ promotions, filters }: Props) {
             ends_at: form.ends_at || null,
             customer_tier: form.customer_tier || null,
             usage_limit: form.usage_limit ? parseInt(form.usage_limit) : null,
-        }, {
-            onSuccess: () => { setShowCreate(false); resetForm(); },
-            onFinish: () => setProcessing(false),
-        });
+        };
+        if (dialogMode === 'edit' && editTarget) {
+            router.put(route('promotions.update', editTarget.id), payload, {
+                onSuccess: () => { setDialogMode(null); setEditTarget(null); resetForm(); },
+                onFinish: () => setProcessing(false),
+            });
+        } else {
+            router.post(route('promotions.store'), payload, {
+                onSuccess: () => { setDialogMode(null); resetForm(); },
+                onFinish: () => setProcessing(false),
+            });
+        }
     }
 
     function toggleActive(promo: Promotion) {
@@ -80,8 +117,14 @@ export default function PromotionsIndex({ promotions, filters }: Props) {
         }, { preserveState: true });
     }
 
-    function deletePromo(promo: Promotion) {
-        if (!confirm(`Delete promotion "${promo.name}"?`)) return;
+    async function deletePromo(promo: Promotion) {
+        const ok = await confirm({
+            title: 'Delete Promotion',
+            description: `Delete promotion "${promo.name}"?`,
+            confirmLabel: 'Delete',
+            variant: 'destructive',
+        });
+        if (!ok) return;
         router.delete(route('promotions.destroy', promo.id));
     }
 
@@ -96,32 +139,39 @@ export default function PromotionsIndex({ promotions, filters }: Props) {
     }
 
     return (
-        <AuthenticatedLayout header="Promotions">
+        <AuthenticatedLayout>
             <Head title="Promotions" />
 
-            <div className="space-y-4">
+            <div className="space-y-6 p-6">
+                {/* Header */}
                 <div className="flex items-center justify-between">
-                    <div className="flex gap-2">
-                        {['', 'active', 'inactive'].map((s) => (
-                            <Button
-                                key={s}
-                                variant={(filters.status ?? '') === s ? 'default' : 'outline'}
-                                size="sm"
-                                onClick={() => filterByStatus(s)}
-                            >
-                                {s === '' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}
-                            </Button>
-                        ))}
-                    </div>
+                    <h1 className="text-2xl font-bold flex items-center gap-2">
+                        <Percent className="h-6 w-6" />
+                        Promotions
+                    </h1>
                     <PermissionGate permission="promotions.manage">
-                        <Button onClick={() => setShowCreate(true)}>
-                            <Plus className="mr-2 h-4 w-4" /> New Promotion
+                        <Button onClick={openCreate}>
+                            <Plus className="h-4 w-4 mr-1.5" /> New Promotion
                         </Button>
                     </PermissionGate>
                 </div>
 
-                <Card>
-                    <CardContent className="p-0">
+                {/* Status filter buttons */}
+                <div className="flex gap-2">
+                    {['', 'active', 'inactive'].map((s) => (
+                        <Button
+                            key={s}
+                            variant={(filters.status ?? '') === s ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => filterByStatus(s)}
+                        >
+                            {s === '' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}
+                        </Button>
+                    ))}
+                </div>
+
+                <div className="rounded-md border">
+                    <ScrollArea>
                         <Table>
                             <TableHeader>
                                 <TableRow>
@@ -138,7 +188,7 @@ export default function PromotionsIndex({ promotions, filters }: Props) {
                             <TableBody>
                                 {promotions.data.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+                                        <TableCell colSpan={8} className="h-32 text-center text-muted-foreground">
                                             No promotions found.
                                         </TableCell>
                                     </TableRow>
@@ -181,13 +231,22 @@ export default function PromotionsIndex({ promotions, filters }: Props) {
                                                     {promo.usage_count}{promo.usage_limit ? ` / ${promo.usage_limit}` : ''}
                                                 </TableCell>
                                                 <TableCell>
-                                                    <Badge variant={promo.is_active ? 'default' : 'secondary'}>
+                                                    <Badge variant={promo.is_active ? 'success' : 'secondary'}>
                                                         {promo.is_active ? 'Active' : 'Inactive'}
                                                     </Badge>
                                                 </TableCell>
                                                 <TableCell>
                                                     <PermissionGate permission="promotions.manage">
                                                         <div className="flex gap-1">
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-8 w-8"
+                                                                title="Edit"
+                                                                onClick={() => openEdit(promo)}
+                                                            >
+                                                                <Pencil className="h-4 w-4" />
+                                                            </Button>
                                                             <Button
                                                                 variant="ghost"
                                                                 size="sm"
@@ -212,33 +271,22 @@ export default function PromotionsIndex({ promotions, filters }: Props) {
                                 )}
                             </TableBody>
                         </Table>
-                    </CardContent>
-                </Card>
+                    </ScrollArea>
+                </div>
 
-                {/* Pagination */}
-                {promotions.last_page > 1 && (
-                    <div className="flex justify-center gap-1">
-                        {promotions.links.map((link, i) => (
-                            <Button
-                                key={i}
-                                variant={link.active ? 'default' : 'outline'}
-                                size="sm"
-                                disabled={!link.url}
-                                onClick={() => link.url && router.get(link.url, {}, { preserveState: true })}
-                                dangerouslySetInnerHTML={{ __html: link.label }}
-                            />
-                        ))}
-                    </div>
-                )}
+                <Pagination data={promotions} />
             </div>
 
             {/* Create Promotion Dialog */}
-            <Dialog open={showCreate} onOpenChange={(open) => { if (!open) setShowCreate(false); }}>
+            <Dialog open={dialogMode !== null} onOpenChange={(open) => { if (!open) { setDialogMode(null); setEditTarget(null); } }}>
                 <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
                     <DialogHeader>
-                        <DialogTitle>New Promotion</DialogTitle>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Percent className="h-5 w-5" />
+                            {dialogMode === 'edit' ? `Edit: ${editTarget?.name}` : 'New Promotion'}
+                        </DialogTitle>
                     </DialogHeader>
-                    <form onSubmit={handleCreate} className="space-y-4">
+                    <form onSubmit={handleSubmit} className="space-y-4">
                         <div className="space-y-2">
                             <Label>Name *</Label>
                             <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
@@ -330,9 +378,9 @@ export default function PromotionsIndex({ promotions, filters }: Props) {
                         </div>
 
                         <DialogFooter>
-                            <Button type="button" variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
+                            <Button type="button" variant="outline" onClick={() => { setDialogMode(null); setEditTarget(null); }}>Cancel</Button>
                             <Button type="submit" disabled={processing}>
-                                {processing ? 'Creating...' : 'Create Promotion'}
+                                {processing ? 'Saving...' : dialogMode === 'edit' ? 'Save Changes' : 'Create Promotion'}
                             </Button>
                         </DialogFooter>
                     </form>

@@ -12,7 +12,7 @@ import { Pagination } from '@/Components/ui/pagination';
 import { PermissionGate } from '@/Components/app/permission-gate';
 import { usePermission } from '@/hooks/use-permissions';
 import { useDebounce } from '@/hooks/use-debounce';
-import { Search, Boxes, AlertTriangle, ClipboardCheck, PlayCircle, StopCircle, SlidersHorizontal, History, Printer } from 'lucide-react';
+import { Search, Boxes, AlertTriangle, ClipboardCheck, PlayCircle, StopCircle, SlidersHorizontal, History, Printer, Wrench } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import type { Category, InventorySession, PaginatedData, PageProps, Product } from '@/types';
 
@@ -33,13 +33,15 @@ export default function StockIndex({ products, categories, activeSession, filter
     const debouncedSearch           = useDebounce(search, 300);
 
     // Dialogs
-    const [adjustOpen, setAdjustOpen]       = useState(false);
-    const [startOpen, setStartOpen]         = useState(false);
+    const [adjustOpen, setAdjustOpen]           = useState(false);
+    const [internalOpen, setInternalOpen]       = useState(false);
+    const [startOpen, setStartOpen]             = useState(false);
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
     // Forms
-    const adjustForm = useForm({ adjustment_type: 'add', quantity: '', reason: '' });
-    const startForm  = useForm({ notes: '' });
+    const adjustForm   = useForm({ adjustment_type: 'add', quantity: '', reason: '' });
+    const internalForm = useForm({ quantity: '', purpose: '' });
+    const startForm    = useForm({ notes: '' });
 
     // Per-row inventory count inputs: productId -> counted_qty string
     const [countInputs, setCountInputs] = useState<Record<number, string>>({});
@@ -69,6 +71,21 @@ export default function StockIndex({ products, categories, activeSession, filter
         if (!selectedProduct) return;
         adjustForm.post(route('stock.adjust', selectedProduct.id), {
             onSuccess: () => setAdjustOpen(false),
+        });
+    }
+
+    function openInternal(product: Product) {
+        setSelectedProduct(product);
+        internalForm.setData({ quantity: '', purpose: '' });
+        internalForm.clearErrors();
+        setInternalOpen(true);
+    }
+
+    function submitInternal(e: React.FormEvent) {
+        e.preventDefault();
+        if (!selectedProduct) return;
+        internalForm.post(route('stock.internal-use', selectedProduct.id), {
+            onSuccess: () => setInternalOpen(false),
         });
     }
 
@@ -257,14 +274,25 @@ export default function StockIndex({ products, categories, activeSession, filter
                                                     </PermissionGate>
                                                 ) : (
                                                     <PermissionGate permission="stock.adjust">
-                                                        <Button
-                                                            size="sm"
-                                                            variant="outline"
-                                                            onClick={() => openAdjust(p)}
-                                                        >
-                                                            <SlidersHorizontal className="mr-1.5 h-4 w-4" />
-                                                            Adjust
-                                                        </Button>
+                                                        <div className="flex items-center justify-end gap-2">
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline"
+                                                                onClick={() => openAdjust(p)}
+                                                            >
+                                                                <SlidersHorizontal className="mr-1.5 h-4 w-4" />
+                                                                Adjust
+                                                            </Button>
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline"
+                                                                className="border-orange-400 text-orange-700 hover:bg-orange-50"
+                                                                onClick={() => openInternal(p)}
+                                                            >
+                                                                <Wrench className="mr-1.5 h-4 w-4" />
+                                                                Internal Use
+                                                            </Button>
+                                                        </div>
                                                     </PermissionGate>
                                                 )}
                                             </TableCell>
@@ -354,6 +382,72 @@ export default function StockIndex({ products, categories, activeSession, filter
                                 </Button>
                                 <Button type="submit" disabled={adjustForm.processing}>
                                     Save Adjustment
+                                </Button>
+                            </DialogFooter>
+                        </form>
+                    )}
+                </DialogContent>
+            </Dialog>
+
+            {/* Internal Use Dialog */}
+            <Dialog open={internalOpen} onOpenChange={setInternalOpen}>
+                <DialogContent className="max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Wrench className="h-5 w-5" />
+                            Internal Use
+                        </DialogTitle>
+                    </DialogHeader>
+                    {selectedProduct && (
+                        <form onSubmit={submitInternal} className="space-y-4">
+                            <div className="rounded-md border bg-muted/40 px-4 py-3 text-sm space-y-1">
+                                <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Product</span>
+                                    <span className="font-medium">{selectedProduct.name}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Current Stock</span>
+                                    <span className="font-bold">{selectedProduct.stock_quantity}</span>
+                                </div>
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <Label htmlFor="int_qty">Quantity Used</Label>
+                                <Input
+                                    id="int_qty"
+                                    type="number"
+                                    min="1"
+                                    value={internalForm.data.quantity}
+                                    onChange={(e) => internalForm.setData('quantity', e.target.value)}
+                                    autoFocus
+                                />
+                                {internalForm.errors.quantity && (
+                                    <p className="text-sm text-destructive">{internalForm.errors.quantity}</p>
+                                )}
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <Label htmlFor="int_purpose">
+                                    Purpose <span className="text-muted-foreground">(optional)</span>
+                                </Label>
+                                <Textarea
+                                    id="int_purpose"
+                                    rows={2}
+                                    value={internalForm.data.purpose}
+                                    onChange={(e) => internalForm.setData('purpose', e.target.value)}
+                                    placeholder="Office use, demo unit, repair parts…"
+                                />
+                                {internalForm.errors.purpose && (
+                                    <p className="text-sm text-destructive">{internalForm.errors.purpose}</p>
+                                )}
+                            </div>
+
+                            <DialogFooter>
+                                <Button type="button" variant="outline" onClick={() => setInternalOpen(false)}>
+                                    Cancel
+                                </Button>
+                                <Button type="submit" disabled={internalForm.processing}>
+                                    Record Internal Use
                                 </Button>
                             </DialogFooter>
                         </form>

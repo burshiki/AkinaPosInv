@@ -4,12 +4,12 @@ import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import { Badge } from '@/Components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/Components/ui/table';
-
+import { ScrollArea } from '@/Components/ui/scroll-area';
 import { Pagination } from '@/Components/ui/pagination';
 import { PermissionGate } from '@/Components/app/permission-gate';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useDebounce } from '@/hooks/use-debounce';
-import { Eye, Ban, Search } from 'lucide-react';
+import { Eye, Ban, Search, ShoppingCart } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useConfirm } from '@/Components/app/confirm-dialog';
 import type { Sale, PaginatedData } from '@/types';
@@ -18,6 +18,11 @@ interface Props {
     sales: PaginatedData<Sale>;
     filters: { search?: string; date_from?: string; date_to?: string };
 }
+
+const STATUS_CFG: Record<string, 'default' | 'secondary' | 'destructive' | 'outline' | 'success'> = {
+    completed: 'success',
+    voided:    'destructive',
+};
 
 export default function SalesIndex({ sales, filters }: Props) {
     const confirm = useConfirm();
@@ -61,19 +66,18 @@ export default function SalesIndex({ sales, filters }: Props) {
         router.post(route('sales.void', sale.id), { reason: 'Voided by cashier' });
     };
 
-    const statusVariant = (status: string) => {
-        switch (status) {
-            case 'completed': return 'success' as const;
-            case 'voided': return 'destructive' as const;
-            default: return 'secondary' as const;
-        }
-    };
-
     return (
-        <AuthenticatedLayout header="Sales History">
+        <AuthenticatedLayout>
             <Head title="Sales" />
 
-            <div className="space-y-4">
+            <div className="space-y-6 p-6">
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                    <h1 className="text-2xl font-bold flex items-center gap-2">
+                        <ShoppingCart className="h-6 w-6" />
+                        Sales History
+                    </h1>
+                </div>
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                     <div className="relative flex-1 max-w-sm">
                         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -93,6 +97,7 @@ export default function SalesIndex({ sales, filters }: Props) {
                 </div>
 
                 <div className="rounded-md border">
+                    <ScrollArea>
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -109,7 +114,7 @@ export default function SalesIndex({ sales, filters }: Props) {
                         <TableBody>
                             {sales.data.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                                    <TableCell colSpan={8} className="h-32 text-center text-muted-foreground">
                                         No sales found
                                     </TableCell>
                                 </TableRow>
@@ -125,7 +130,7 @@ export default function SalesIndex({ sales, filters }: Props) {
                                         </TableCell>
                                         <TableCell className="text-right font-medium">{formatCurrency(sale.total)}</TableCell>
                                         <TableCell>
-                                            <Badge variant={statusVariant(sale.status)}>{sale.status}</Badge>
+                                            <Badge variant={STATUS_CFG[sale.status] ?? 'secondary'}>{sale.status}</Badge>
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex items-center justify-end gap-1">
@@ -145,8 +150,7 @@ export default function SalesIndex({ sales, filters }: Props) {
                                 ))
                             )}
                         </TableBody>
-                    </Table>
-                </div>
+                    </Table>                    </ScrollArea>                </div>
 
                 <Pagination data={sales} />
             </div>

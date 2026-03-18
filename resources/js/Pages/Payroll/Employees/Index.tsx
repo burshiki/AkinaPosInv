@@ -5,11 +5,12 @@ import { Input } from '@/Components/ui/input';
 import { Badge } from '@/Components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/Components/ui/table';
+import { ScrollArea } from '@/Components/ui/scroll-area';
 import { Pagination } from '@/Components/ui/pagination';
 import { PermissionGate } from '@/Components/app/permission-gate';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useConfirm } from '@/Components/app/confirm-dialog';
-import { Plus, Search, Eye, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Search, Eye, Pencil, Trash2, UserCheck } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import type { Employee, PaginatedData, User } from '@/types';
 import EmployeeCreateModal from './Create';
@@ -61,15 +62,26 @@ export default function EmployeesIndex({ employees, departments, filters, users 
     const fmt = (n: number) => new Intl.NumberFormat('en-PH', { minimumFractionDigits: 2 }).format(n);
 
     return (
-        <AuthenticatedLayout header="Employees">
+        <AuthenticatedLayout>
             <Head title="Employees" />
-            <div className="space-y-4">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex flex-1 flex-wrap items-center gap-2">
-                        <div className="relative flex-1 max-w-sm">
-                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                            <Input placeholder="Search employees..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
-                        </div>
+            <div className="space-y-6 p-6">
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                    <h1 className="text-2xl font-bold flex items-center gap-2">
+                        <UserCheck className="h-6 w-6" />
+                        Employees
+                    </h1>
+                    <PermissionGate permission="payroll.manage_employees">
+                        <Button onClick={() => setCreateOpen(true)}><Plus className="h-4 w-4 mr-1.5" /> Add Employee</Button>
+                    </PermissionGate>
+                </div>
+
+                {/* Filters */}
+                <div className="flex flex-wrap gap-3">
+                    <div className="relative flex-1 min-w-48">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input placeholder="Search employees..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+                    </div>
                         <Select value={filters.pay_type ?? 'all'} onValueChange={(v) => handleFilter('pay_type', v)}>
                             <SelectTrigger className="w-32"><SelectValue placeholder="Pay Type" /></SelectTrigger>
                             <SelectContent>
@@ -95,13 +107,10 @@ export default function EmployeesIndex({ employees, departments, filters, users 
                                 <SelectItem value="inactive">Inactive</SelectItem>
                             </SelectContent>
                         </Select>
-                    </div>
-                    <PermissionGate permission="payroll.manage_employees">
-                        <Button onClick={() => setCreateOpen(true)}><Plus className="mr-2 h-4 w-4" /> Add Employee</Button>
-                    </PermissionGate>
                 </div>
 
                 <div className="rounded-md border">
+                    <ScrollArea>
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -117,7 +126,7 @@ export default function EmployeesIndex({ employees, departments, filters, users 
                         </TableHeader>
                         <TableBody>
                             {employees.data.length === 0 ? (
-                                <TableRow><TableCell colSpan={8} className="py-8 text-center text-muted-foreground">No employees found</TableCell></TableRow>
+                                <TableRow><TableCell colSpan={8} className="h-32 text-center text-muted-foreground">No employees found</TableCell></TableRow>
                             ) : employees.data.map((emp) => (
                                 <TableRow key={emp.id}>
                                     <TableCell className="font-mono text-sm">{emp.employee_number}</TableCell>
@@ -126,7 +135,7 @@ export default function EmployeesIndex({ employees, departments, filters, users 
                                     <TableCell>{emp.department ?? '—'}</TableCell>
                                     <TableCell><Badge variant="outline">{emp.pay_type === 'monthly' ? 'Monthly' : 'Daily'}</Badge></TableCell>
                                     <TableCell className="text-right font-mono">{fmt(emp.basic_salary)}</TableCell>
-                                    <TableCell><Badge variant={emp.is_active ? 'default' : 'secondary'}>{emp.is_active ? 'Active' : 'Inactive'}</Badge></TableCell>
+                                    <TableCell><Badge variant={emp.is_active ? 'success' : 'secondary'}>{emp.is_active ? 'Active' : 'Inactive'}</Badge></TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex items-center justify-end gap-1">
                                             <Button variant="ghost" size="icon" className="h-8 w-8" asChild title="View">
@@ -146,6 +155,7 @@ export default function EmployeesIndex({ employees, departments, filters, users 
                             ))}
                         </TableBody>
                     </Table>
+                    </ScrollArea>
                 </div>
                 <Pagination data={employees} />
             </div>

@@ -11,6 +11,7 @@ use App\Models\Customer;
 use App\Models\InventorySession;
 use App\Models\Product;
 use App\Models\Quotation;
+use App\Models\RepairJob;
 use App\Models\Sale;
 use App\Services\SaleService;
 use Inertia\Inertia;
@@ -70,9 +71,21 @@ class SaleController extends Controller
                 ->find(request()->integer('quotation_id'));
         }
 
+        $initialRepairJob = null;
+        if (request()->filled('repair_job_id')) {
+            $initialRepairJob = RepairJob::with(['components.product', 'customer'])
+                ->whereIn('status', ['done', 'in_progress', 'pending'])
+                ->find(request()->integer('repair_job_id'));
+        }
+
+        $repairQueue = RepairJob::where('status', 'done')
+            ->with('technician')
+            ->orderBy('completed_at')
+            ->get(['id', 'job_number', 'customer_name', 'customer_phone', 'repair_fee', 'completed_at', 'technician_id']);
+
         return Inertia::render('Sales/Create', [
             'products' => Product::where('is_active', true)
-                ->when(!$initialQuotation, fn ($q) => $q->where('stock_quantity', '>', 0))
+                ->when(!$initialQuotation && !$initialRepairJob, fn ($q) => $q->where('stock_quantity', '>', 0))
                 ->with('category')
                 ->orderBy('name')
                 ->get(),
@@ -82,6 +95,8 @@ class SaleController extends Controller
             'drawerSession' => $drawerSession,
             'completedSale' => $completedSale,
             'initialQuotation' => $initialQuotation,
+            'initialRepairJob' => $initialRepairJob,
+            'repairQueue' => $repairQueue,
         ]);
     }
 

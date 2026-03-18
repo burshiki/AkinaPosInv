@@ -49,6 +49,17 @@ const permissionLabels: Record<string, string> = {
     'leave.view': 'View Leave Requests',
     'leave.request': 'File Leave Requests',
     'leave.approve': 'Approve / Reject Leave',
+    // Quotations module
+    'quotations.view': 'View Quotations',
+    'quotations.create': 'Create / Manage Quotations',
+    'quotations.send': 'Send Quotation by Email',
+    'quotations.delete': 'Delete Quotations',
+    // Settings
+    'settings.manage': 'Manage Settings',
+    // Repairs module
+    'repairs.view': 'View Repairs',
+    'repairs.create': 'Accept Repairs',
+    'repairs.manage': 'Manage Repairs (Start / Done / Components)',
 };
 
 export default function UsersCreate({ allPermissions }: Props) {

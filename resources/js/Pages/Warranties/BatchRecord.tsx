@@ -69,7 +69,7 @@ export default function BatchRecord({ warranties, receipts, receiptFilter }: Pro
         setErrors({});
         router.post(
             route('warranties.batch-record.store'),
-            { serials: toSubmit },
+            { serials: toSubmit as any },
             {
                 onError:   (errs) => { setErrors(errs as Record<string, string>); setProcessing(false); },
                 onSuccess: ()     => setProcessing(false),

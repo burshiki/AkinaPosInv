@@ -11,7 +11,9 @@ import { formatCurrency, formatDate } from '@/lib/utils';
 import { useDebounce } from '@/hooks/use-debounce';
 import { Search, Plus, ClipboardList, Eye } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import type { Quotation, PaginatedData } from '@/types';
+import { PermissionGate } from '@/Components/app/permission-gate';
+import CreateModal from './CreateModal';
+import type { Quotation, PaginatedData, Product, Customer } from '@/types';
 
 const STATUS_CFG: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive' }> = {
     draft:    { label: 'Draft',    variant: 'outline' },
@@ -23,11 +25,14 @@ const STATUS_CFG: Record<string, { label: string; variant: 'default' | 'secondar
 interface Props {
     quotations: PaginatedData<Quotation & { items_count: number }>;
     filters:    { search?: string; status?: string };
+    products:   Pick<Product, 'id' | 'name' | 'sku' | 'selling_price'>[];
+    customers:  Pick<Customer, 'id' | 'name' | 'phone' | 'email'>[];
 }
 
-export default function QuotationsIndex({ quotations, filters }: Props) {
-    const [search, setSearch] = useState(filters.search ?? '');
-    const [status, setStatus] = useState(filters.status ?? 'all');
+export default function QuotationsIndex({ quotations, filters, products, customers }: Props) {
+    const [search, setSearch]       = useState(filters.search ?? '');
+    const [status, setStatus]       = useState(filters.status ?? 'all');
+    const [createOpen, setCreateOpen] = useState(false);
     const debouncedSearch = useDebounce(search, 300);
 
     useEffect(() => {
@@ -47,10 +52,12 @@ export default function QuotationsIndex({ quotations, filters }: Props) {
                         <ClipboardList className="h-6 w-6" />
                         Quotations
                     </h1>
-                    <Button onClick={() => router.get(route('quotations.create'))}>
-                        <Plus className="h-4 w-4 mr-1.5" />
-                        New Quotation
-                    </Button>
+                    <PermissionGate permission="quotations.create">
+                        <Button onClick={() => setCreateOpen(true)}>
+                            <Plus className="h-4 w-4 mr-1.5" />
+                            New Quotation
+                        </Button>
+                    </PermissionGate>
                 </div>
 
                 <div className="flex flex-wrap gap-3">
@@ -136,6 +143,13 @@ export default function QuotationsIndex({ quotations, filters }: Props) {
 
                 <Pagination data={quotations} />
             </div>
+
+            <CreateModal
+                open={createOpen}
+                onClose={() => setCreateOpen(false)}
+                products={products}
+                customers={customers}
+            />
         </AuthenticatedLayout>
     );
 }
