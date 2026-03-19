@@ -561,7 +561,7 @@ class ProductSeeder extends Seeder
                 'has_warranty'        => false,
                 'warranty_months'     => null,
                 'is_active'           => true,
-                'tax_rate'            => null,
+                'tax_rate'            => 0,
                 'is_vat_exempt'       => false,
                 'created_at'          => $now,
                 'updated_at'          => $now,

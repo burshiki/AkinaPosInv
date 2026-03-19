@@ -102,7 +102,7 @@ On the **server**, pull and apply:
 ```bash
 git checkout -- .
 git pull origin main
-composer install --no-dev --optimize-autoloader
+composer install --no-dev --optimize-autoloader --ignore-platform-req=ext-gd
 php artisan migrate --force
 php artisan cache:clear
 php artisan config:clear
