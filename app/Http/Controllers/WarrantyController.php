@@ -159,12 +159,23 @@ class WarrantyController extends Controller
 
     public function recordSerial(Request $request, Warranty $warranty)
     {
-        abort_unless($warranty->status === 'pending_serial', 422, 'Only pending warranties can have their serial recorded.');
+        $alreadyActive = $warranty->status === 'active' && is_null($warranty->serial_number);
+        abort_unless($warranty->status === 'pending_serial' || $alreadyActive, 422, 'Only pending warranties can have their serial recorded.');
 
         $validated = $request->validate([
             'serial_number' => ['nullable', 'string', 'max:255', 'unique:warranties,serial_number'],
             'notes'         => ['nullable', 'string'],
         ]);
+
+        if ($alreadyActive) {
+            // Warranty was activated without a serial — just record it, preserve existing dates
+            $warranty->update([
+                'serial_number' => $validated['serial_number'] ?? null,
+                'notes'         => $validated['notes'] ?? null,
+            ]);
+
+            return back()->with('success', "Serial recorded for {$warranty->product->name}.");
+        }
 
         $expiresAt = now()->addMonths($warranty->warranty_months)->toDateString();
 

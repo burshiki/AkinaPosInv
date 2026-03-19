@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ScrollArea } from '@/Components/ui/scroll-area';
 import { formatCurrency } from '@/lib/utils';
 import { useDebounce } from '@/hooks/use-debounce';
-import { Search, Eye, CreditCard } from 'lucide-react';
+import { Search, Eye, CreditCard, ArrowLeft } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 interface CustomerSummary {
@@ -43,6 +43,13 @@ export default function DebtsIndex({ customers, filters, totalOutstanding }: Pro
             <Head title="Customer Debts" />
 
             <div className="space-y-6 p-6">
+                {/* Back */}
+                <Button variant="outline" size="sm" asChild>
+                    <Link href={route('customers.index')}>
+                        <ArrowLeft className="mr-2 h-4 w-4" /> Customers
+                    </Link>
+                </Button>
+
                 {/* Header */}
                 <div className="flex items-center justify-between">
                     <h1 className="text-2xl font-bold flex items-center gap-2">

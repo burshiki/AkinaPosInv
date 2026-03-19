@@ -8,6 +8,7 @@ import { Label } from '@/Components/ui/label';
 import { Textarea } from '@/Components/ui/textarea';
 import { Checkbox } from '@/Components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/Components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
 import { PermissionGate } from '@/Components/app/permission-gate';
 import { formatCurrency } from '@/lib/utils';
 import { Eye, ArrowLeftRight, Landmark, Plus, Pencil, Trash2 } from 'lucide-react';
@@ -24,6 +25,26 @@ export default function BankAccountsIndex({ bankAccounts, totalBalance }: Props)
     const confirm = useConfirm();
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editingAccount, setEditingAccount] = useState<BankAccount | null>(null);
+    const [transferOpen, setTransferOpen] = useState(false);
+
+    const transferForm = useForm({
+        from_account_id: '',
+        to_account_id: '',
+        amount: '',
+    });
+
+    const openTransfer = () => {
+        transferForm.reset();
+        transferForm.clearErrors();
+        setTransferOpen(true);
+    };
+
+    const handleTransferSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        transferForm.post(route('bank-accounts.transfer.store'), {
+            onSuccess: () => setTransferOpen(false),
+        });
+    };
 
     const form = useForm({
         name: '',
@@ -99,10 +120,8 @@ export default function BankAccountsIndex({ bankAccounts, totalBalance }: Props)
                             </Button>
                         </PermissionGate>
                         <PermissionGate permission="banking.transfer">
-                            <Button variant="outline" asChild>
-                                <Link href={route('bank-accounts.transfer')}>
-                                    <ArrowLeftRight className="mr-2 h-4 w-4" /> Transfer Funds
-                                </Link>
+                            <Button variant="outline" onClick={openTransfer}>
+                                <ArrowLeftRight className="mr-2 h-4 w-4" /> Transfer Funds
                             </Button>
                         </PermissionGate>
                     </div>
@@ -143,11 +162,6 @@ export default function BankAccountsIndex({ bankAccounts, totalBalance }: Props)
                                     </Link>
                                 </Button>
                                 <PermissionGate permission="banking.manage">
-                                    <Button variant="outline" size="sm" asChild className="flex-1">
-                                        <Link href={route('bank-accounts.record-entry', account.id)}>
-                                            Record Entry
-                                        </Link>
-                                    </Button>
                                     <Button variant="ghost" size="sm" onClick={() => openEdit(account)}>
                                         <Pencil className="h-4 w-4" />
                                     </Button>
@@ -198,6 +212,85 @@ export default function BankAccountsIndex({ bankAccounts, totalBalance }: Props)
                     </div>
                 )}
             </div>
+
+            <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <ArrowLeftRight className="h-5 w-5" /> Transfer Funds
+                        </DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleTransferSubmit} className="space-y-4">
+                        <div className="space-y-1.5">
+                            <Label>From Account</Label>
+                            <Select
+                                value={transferForm.data.from_account_id}
+                                onValueChange={(v) => transferForm.setData('from_account_id', v)}
+                            >
+                                <SelectTrigger><SelectValue placeholder="Source account" /></SelectTrigger>
+                                <SelectContent>
+                                    {bankAccounts
+                                        .filter((a) => a.is_active && String(a.id) !== transferForm.data.to_account_id)
+                                        .map((a) => (
+                                            <SelectItem key={a.id} value={String(a.id)}>
+                                                {a.bank_name || a.name} ({formatCurrency(a.balance)})
+                                            </SelectItem>
+                                        ))}
+                                </SelectContent>
+                            </Select>
+                            {transferForm.errors.from_account_id && <p className="text-sm text-destructive">{transferForm.errors.from_account_id}</p>}
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <Label>To Account</Label>
+                            <Select
+                                value={transferForm.data.to_account_id}
+                                onValueChange={(v) => transferForm.setData('to_account_id', v)}
+                            >
+                                <SelectTrigger><SelectValue placeholder="Destination account" /></SelectTrigger>
+                                <SelectContent>
+                                    {bankAccounts
+                                        .filter((a) => a.is_active && String(a.id) !== transferForm.data.from_account_id)
+                                        .map((a) => (
+                                            <SelectItem key={a.id} value={String(a.id)}>
+                                                {a.bank_name || a.name} ({formatCurrency(a.balance)})
+                                            </SelectItem>
+                                        ))}
+                                </SelectContent>
+                            </Select>
+                            {transferForm.errors.to_account_id && <p className="text-sm text-destructive">{transferForm.errors.to_account_id}</p>}
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <Label htmlFor="transfer_amount">Amount</Label>
+                            <Input
+                                id="transfer_amount"
+                                type="number"
+                                step="0.01"
+                                min="0.01"
+                                value={transferForm.data.amount}
+                                onChange={(e) => transferForm.setData('amount', e.target.value)}
+                                autoFocus
+                            />
+                            {transferForm.data.from_account_id && (() => {
+                                const src = bankAccounts.find((a) => String(a.id) === transferForm.data.from_account_id);
+                                return src ? <p className="text-xs text-muted-foreground">Available: {formatCurrency(src.balance)}</p> : null;
+                            })()}
+                            {transferForm.errors.amount && <p className="text-sm text-destructive">{transferForm.errors.amount}</p>}
+                        </div>
+
+                        <DialogFooter>
+                            <Button type="button" variant="outline" onClick={() => setTransferOpen(false)}>Cancel</Button>
+                            <Button
+                                type="submit"
+                                disabled={transferForm.processing || !transferForm.data.from_account_id || !transferForm.data.to_account_id || !transferForm.data.amount}
+                            >
+                                {transferForm.processing ? 'Transferring…' : 'Transfer'}
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
 
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogContent className="max-w-md">

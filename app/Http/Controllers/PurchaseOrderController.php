@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\ReceivePurchaseOrderRequest;
 use App\Http\Requests\StorePurchaseOrderRequest;
+use App\Models\BankAccount;
+use App\Models\CashDrawerSession;
 use App\Models\Product;
 use App\Models\PurchaseOrder;
 use App\Models\Supplier;
@@ -66,7 +68,9 @@ class PurchaseOrderController extends Controller
         $purchaseOrder->load(['items.product', 'creator', 'supplier', 'bill']);
 
         return Inertia::render('PurchaseOrders/Show', [
-            'order' => $purchaseOrder,
+            'order'        => $purchaseOrder,
+            'bankAccounts' => BankAccount::where('is_active', true)->orderBy('name')->get(),
+            'openSession'  => CashDrawerSession::open()->first(),
         ]);
     }
 

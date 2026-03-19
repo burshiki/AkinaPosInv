@@ -293,11 +293,11 @@ export function WarrantyDetailPanel({ warranty, suppliers, onClose, isModal }: W
 
             {/* Primary Actions */}
             <div className="flex flex-wrap gap-2">
-                {warranty.status === 'pending_serial' && (
+                {(warranty.status === 'pending_serial' || (warranty.status === 'active' && !warranty.serial_number)) && (
                     <PermissionGate permission="warranties.record_serial">
                         <Button size="sm" onClick={() => { serialForm.reset(); setSerialOpen(true); }}>
                             <ClipboardList className="h-4 w-4 mr-1.5" />
-                            Record Serial & Activate
+                            {warranty.status === 'pending_serial' ? 'Record Serial & Activate' : 'Record Serial Number'}
                         </Button>
                     </PermissionGate>
                 )}

@@ -83,7 +83,9 @@ class BillController extends Controller
         $bill->load(['supplier', 'purchaseOrder', 'items', 'payments.payer', 'payments.bankAccount', 'creator']);
 
         return Inertia::render('Bills/Show', [
-            'bill' => $bill,
+            'bill'         => $bill,
+            'bankAccounts' => BankAccount::where('is_active', true)->orderBy('name')->get(),
+            'openSession'  => CashDrawerSession::open()->first(),
         ]);
     }
 
@@ -111,7 +113,7 @@ class BillController extends Controller
         }
 
         $validated = $request->validate([
-            'payment_method'  => ['required', 'in:cash,check,bank_transfer,online'],
+            'payment_method'  => ['required', 'in:cash,check,bank_transfer'],
             'amount'          => ['required', 'numeric', 'min:0.01', 'max:' . $bill->balance],
             'bank_account_id' => ['required_unless:payment_method,cash', 'nullable', 'integer', 'exists:bank_accounts,id'],
             'check_number'    => ['nullable', 'string', 'max:100'],

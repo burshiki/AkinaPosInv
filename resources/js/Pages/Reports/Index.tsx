@@ -2,7 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link } from '@inertiajs/react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/Components/ui/card';
 import { PermissionGate } from '@/Components/app/permission-gate';
-import { BarChart3, Package, DollarSign, Clock, PackageMinus, FileText } from 'lucide-react';
+import { BarChart3, Package, DollarSign, Clock, PackageMinus, FileText, CalendarDays } from 'lucide-react';
 
 export default function ReportsIndex() {
     const reports = [
@@ -46,6 +46,13 @@ export default function ReportsIndex() {
             description: 'Daily summary: sales by method, voids, returns, tax collected, cash drawer variance.',
             icon: FileText,
             href: route('reports.show', 'z-report'),
+            permission: 'reports.view',
+        },
+        {
+            title: 'Monthly Report',
+            description: 'Assets snapshot, income & expenses breakdown, and internal use detail for any date range.',
+            icon: CalendarDays,
+            href: route('reports.show', 'monthly'),
             permission: 'reports.view',
         },
     ];

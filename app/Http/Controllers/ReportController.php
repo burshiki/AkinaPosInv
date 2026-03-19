@@ -30,6 +30,7 @@ class ReportController extends Controller
             'bill-aging'    => $this->billAgingReport(),
             'internal-use'  => $this->internalUseReportPage(),
             'z-report'      => $this->zReportPage(),
+            'monthly'       => $this->monthlyReportPage(),
             default         => abort(404),
         };
     }
@@ -117,6 +118,18 @@ class ReportController extends Controller
     {
         return Inertia::render('Reports/BillAging', [
             'report' => $this->apService->getAgingReport(),
+        ]);
+    }
+
+    private function monthlyReportPage()
+    {
+        $from   = request('start_date');
+        $to     = request('end_date');
+        $report = ($from && $to) ? $this->reportService->monthlyReport($from, $to) : null;
+
+        return Inertia::render('Reports/Monthly', [
+            'report'  => $report,
+            'filters' => ['start_date' => $from ?? '', 'end_date' => $to ?? ''],
         ]);
     }
 }

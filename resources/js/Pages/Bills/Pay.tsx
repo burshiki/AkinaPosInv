@@ -28,7 +28,7 @@ export default function BillPay({ bill, bankAccounts, openSession }: Props) {
     });
 
     const method = form.data.payment_method;
-    const showBankField = ['check', 'bank_transfer', 'online'].includes(method);
+    const showBankField = ['check', 'bank_transfer'].includes(method);
     const showCheckField = method === 'check';
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -68,7 +68,6 @@ export default function BillPay({ bill, bankAccounts, openSession }: Props) {
                                         </SelectItem>
                                         <SelectItem value="check">Check</SelectItem>
                                         <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
-                                        <SelectItem value="online">Online</SelectItem>
                                     </SelectContent>
                                 </Select>
                                 {form.errors.payment_method && <p className="text-sm text-destructive">{form.errors.payment_method}</p>}
@@ -132,7 +131,7 @@ export default function BillPay({ bill, bankAccounts, openSession }: Props) {
                                 </div>
                             )}
 
-                            {(method === 'bank_transfer' || method === 'online') && (
+                            {method === 'bank_transfer' && (
                                 <div className="space-y-2">
                                     <Label>Reference Number</Label>
                                     <Input

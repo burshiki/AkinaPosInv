@@ -34,11 +34,20 @@ export default function DebtsShow({ customerName, customerId, debts, totalAmount
 
             <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                    <Button variant="outline" size="sm" asChild>
-                        <Link href={route('debts.index')}>
-                            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Debts
-                        </Link>
-                    </Button>
+                    <div className="flex gap-2">
+                        <Button variant="outline" size="sm" asChild>
+                            <Link href={route('debts.index')}>
+                                <ArrowLeft className="mr-2 h-4 w-4" /> Back to Debts
+                            </Link>
+                        </Button>
+                        {customerId && (
+                            <Button variant="outline" size="sm" asChild>
+                                <Link href={route('customers.show', customerId)}>
+                                    View Customer
+                                </Link>
+                            </Button>
+                        )}
+                    </div>
                     <PermissionGate permission="debts.receive_payment">
                         <Button asChild>
                             <Link href={route('debt-payments.create', { customer_name: customerName })}>

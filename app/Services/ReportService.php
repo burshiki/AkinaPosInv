@@ -4,7 +4,9 @@ namespace App\Services;
 
 use App\Models\BankAccount;
 use App\Models\BankAccountLedger;
+use App\Models\BillPayment;
 use App\Models\CashDrawerExpense;
+use App\Models\CashDrawerReceipt;
 use App\Models\CashDrawerSession;
 use App\Models\CashDrawerTransfer;
 use App\Models\CustomerDebt;
@@ -189,7 +191,7 @@ class ReportService
         $to   = $to   ?: now()->toDateString();
 
         $rows = StockAdjustment::with(['product', 'user'])
-            ->where('type', 'manual')
+            ->whereIn('type', ['internal_use', 'manual'])
             ->where('change_qty', '<', 0)
             ->whereBetween('created_at', [$from, $to . ' 23:59:59'])
             ->when($reason, fn ($q) => $q->where('reason', 'like', "%{$reason}%"))
@@ -415,6 +417,234 @@ class ReportService
             'cash_drawer'     => $drawerSummary,
             'account_movements' => $accountMovements,
             'top_products'    => $topProducts,
+        ];
+    }
+
+    public function monthlyReport(string $from, string $to): array
+    {
+        $periodStart = $from . ' 00:00:00';
+        $periodEnd   = $to   . ' 23:59:59';
+
+        // ── Assets Snapshot (current/live) ────────────────────────────────────
+        // 1. Cash on Hand (Drawer):
+        //    The most recent closed session's closing_balance is the physical
+        //    cash currently sitting in the drawer.
+        $lastClosedSession = CashDrawerSession::where('status', 'closed')
+            ->with('user')
+            ->orderByDesc('closed_at')
+            ->first();
+        $cashOnDrawers = [
+            'session'     => $lastClosedSession ? [
+                'id'               => $lastClosedSession->id,
+                'user'             => $lastClosedSession->user?->name ?? 'Unknown',
+                'closing_balance'  => (float) $lastClosedSession->closing_balance,
+                'closed_at'        => $lastClosedSession->closed_at?->toDateTimeString(),
+            ] : null,
+            'total' => $lastClosedSession ? (float) $lastClosedSession->closing_balance : 0.0,
+        ];
+
+        // 2. Bank Accounts: current balances
+        $bankAccounts = BankAccount::where('is_active', true)->get();
+        $bankData = [
+            'accounts' => $bankAccounts->map(fn ($a) => [
+                'id'             => $a->id,
+                'name'           => $a->name,
+                'bank_name'      => $a->bank_name,
+                'account_number' => $a->account_number,
+                'balance'        => (float) $a->balance,
+            ])->values()->toArray(),
+            'total' => (float) $bankAccounts->sum('balance'),
+        ];
+
+        // 3. Stock Value: live cost value of all active products
+        $stockValue = (float) (Product::where('is_active', true)
+            ->selectRaw('SUM(stock_quantity * cost_price) as total')
+            ->value('total') ?? 0);
+
+        // 4. Internal Use Cost for the period
+        $internalUseRows = StockAdjustment::with(['product'])
+            ->whereIn('type', ['internal_use', 'manual'])
+            ->where('change_qty', '<', 0)
+            ->whereBetween('created_at', [$periodStart, $periodEnd])
+            ->get();
+        $internalUseCost = (float) $internalUseRows->sum(
+            fn ($r) => abs($r->change_qty) * (float) ($r->product?->cost_price ?? 0)
+        );
+
+        // 5. Customer Debt: total outstanding balances
+        $customerDebt = (float) CustomerDebt::whereIn('status', ['unpaid', 'partial'])
+            ->sum('balance');
+
+        $totalAssets = $cashOnDrawers['total'] + $bankData['total'] + $stockValue
+            + $internalUseCost + $customerDebt;
+
+        // ── Sales Summary ────────────────────────────────────────────────────
+        $completedSales = Sale::where('status', 'completed')
+            ->whereBetween('sold_at', [$periodStart, $periodEnd])
+            ->with('items')
+            ->get();
+
+        $voidedCount = Sale::where('status', 'voided')
+            ->whereBetween('sold_at', [$periodStart, $periodEnd])
+            ->count();
+
+        $salesRevenue = (float) $completedSales->sum('total');
+        $saleIds      = $completedSales->pluck('id');
+        $salesCost    = $saleIds->isNotEmpty()
+            ? (float) (SaleItem::whereIn('sale_id', $saleIds)
+                ->selectRaw('SUM(cost_price * quantity) as total_cost')
+                ->value('total_cost') ?? 0)
+            : 0;
+        $salesCount = $completedSales->count();
+
+        $daily = $completedSales->groupBy(fn ($s) => substr($s->sold_at, 0, 10))
+            ->map(function ($group, $date) {
+                $rev  = (float) $group->sum('total');
+                $cost = (float) (SaleItem::whereIn('sale_id', $group->pluck('id'))
+                    ->selectRaw('SUM(cost_price * quantity) as c')
+                    ->value('c') ?? 0);
+                return [
+                    'date'    => $date,
+                    'count'   => $group->count(),
+                    'revenue' => $rev,
+                    'cost'    => $cost,
+                    'profit'  => $rev - $cost,
+                ];
+            })->values()->sortBy('date')->values()->toArray();
+
+        $byPaymentMethod = $completedSales->groupBy('payment_method')
+            ->map(fn ($group, $method) => [
+                'method' => $method,
+                'count'  => $group->count(),
+                'total'  => (float) $group->sum('total'),
+            ])->values()->toArray();
+
+        $topProducts = $saleIds->isNotEmpty()
+            ? SaleItem::whereIn('sale_id', $saleIds)
+                ->selectRaw('product_name, SUM(quantity) as quantity_sold, SUM(quantity * unit_price) as revenue')
+                ->groupBy('product_name')
+                ->orderByDesc('revenue')
+                ->limit(10)
+                ->get()
+                ->map(fn ($r) => [
+                    'name'          => $r->product_name,
+                    'quantity_sold' => (int) $r->quantity_sold,
+                    'revenue'       => (float) $r->revenue,
+                ])->toArray()
+            : [];
+
+        // ── Income ──────────────────────────────────────────────────────────
+        $debtPayments = (float) DebtPayment::whereBetween('paid_at', [$periodStart, $periodEnd])
+            ->sum('amount');
+
+        $receiptRows = CashDrawerReceipt::whereBetween('created_at', [$periodStart, $periodEnd])->get();
+        $cashReceiptsByCategory = $receiptRows->groupBy('category')
+            ->map(fn ($g, $cat) => [
+                'category' => $cat ?: 'Uncategorized',
+                'total'    => (float) $g->sum('amount'),
+            ])->values()->toArray();
+
+        $bankInflowRows = BankAccountLedger::whereBetween('transacted_at', [$periodStart, $periodEnd])
+            ->where('type', 'in')
+            ->with('bankAccount')
+            ->get();
+        $bankInflowsByAccount = $bankInflowRows->groupBy('bank_account_id')
+            ->map(fn ($g) => [
+                'account_name' => $g->first()->bankAccount?->name ?? 'Unknown',
+                'total'        => (float) $g->sum('amount'),
+            ])->values()->toArray();
+
+        $totalIncome = $salesRevenue + $debtPayments
+            + (float) $receiptRows->sum('amount')
+            + (float) $bankInflowRows->sum('amount');
+
+        // ── Expenses ────────────────────────────────────────────────────────
+        $billPayments = BillPayment::whereBetween('paid_at', [$periodStart, $periodEnd])
+            ->with('bill')
+            ->get();
+        $billsByCategory = $billPayments
+            ->groupBy(fn ($bp) => $bp->bill?->category ?? 'Uncategorized')
+            ->map(fn ($g, $cat) => [
+                'category' => $cat,
+                'total'    => (float) $g->sum('amount'),
+            ])->values()->toArray();
+
+        $expenseRows = CashDrawerExpense::whereBetween('created_at', [$periodStart, $periodEnd])->get();
+        $cashExpensesByCategory = $expenseRows->groupBy('category')
+            ->map(fn ($g, $cat) => [
+                'category' => $cat ?: 'Uncategorized',
+                'total'    => (float) $g->sum('amount'),
+            ])->values()->toArray();
+
+        $bankOutflowRows = BankAccountLedger::whereBetween('transacted_at', [$periodStart, $periodEnd])
+            ->where('type', 'out')
+            ->with('bankAccount')
+            ->get();
+        $bankOutflowsByAccount = $bankOutflowRows->groupBy('bank_account_id')
+            ->map(fn ($g) => [
+                'account_name' => $g->first()->bankAccount?->name ?? 'Unknown',
+                'total'        => (float) $g->sum('amount'),
+            ])->values()->toArray();
+
+        $totalExpenses = (float) $billPayments->sum('amount')
+            + (float) $expenseRows->sum('amount')
+            + (float) $bankOutflowRows->sum('amount')
+            + $internalUseCost;
+
+        return [
+            'period'  => ['start' => $from, 'end' => $to],
+            'assets'  => [
+                'cash_on_drawers'   => $cashOnDrawers,
+                'bank_accounts'     => $bankData,
+                'stock_value'       => $stockValue,
+                'internal_use_cost' => $internalUseCost,
+                'customer_debt'     => $customerDebt,
+                'total_assets'      => $totalAssets,
+            ],
+            'sales' => [
+                'summary' => [
+                    'total_sales'   => $salesCount,
+                    'total_revenue' => $salesRevenue,
+                    'total_cost'    => $salesCost,
+                    'total_profit'  => $salesRevenue - $salesCost,
+                    'average_sale'  => $salesCount > 0 ? round($salesRevenue / $salesCount, 2) : 0,
+                    'voided_count'  => $voidedCount,
+                ],
+                'daily'             => $daily,
+                'by_payment_method' => $byPaymentMethod,
+                'top_products'      => $topProducts,
+            ],
+            'income' => [
+                'sales_revenue' => $salesRevenue,
+                'debt_payments' => $debtPayments,
+                'cash_receipts' => [
+                    'by_category' => $cashReceiptsByCategory,
+                    'total'       => (float) $receiptRows->sum('amount'),
+                ],
+                'bank_inflows' => [
+                    'by_account' => $bankInflowsByAccount,
+                    'total'      => (float) $bankInflowRows->sum('amount'),
+                ],
+                'total' => $totalIncome,
+            ],
+            'expenses' => [
+                'bills_paid' => [
+                    'by_category' => $billsByCategory,
+                    'total'       => (float) $billPayments->sum('amount'),
+                ],
+                'cash_expenses' => [
+                    'by_category' => $cashExpensesByCategory,
+                    'total'       => (float) $expenseRows->sum('amount'),
+                ],
+                'bank_outflows' => [
+                    'by_account' => $bankOutflowsByAccount,
+                    'total'      => (float) $bankOutflowRows->sum('amount'),
+                ],
+                'internal_use_cost' => $internalUseCost,
+                'total'             => $totalExpenses,
+            ],
+            'net_income'   => $totalIncome - $totalExpenses,
+            'internal_use' => $this->internalUseReport($from, $to),
         ];
     }
 }
