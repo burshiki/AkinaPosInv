@@ -100,6 +100,7 @@ git push origin main
 On the **server**, pull and apply:
 
 ```bash
+git checkout -- .
 git pull origin main
 composer install --no-dev --optimize-autoloader
 php artisan migrate --force
