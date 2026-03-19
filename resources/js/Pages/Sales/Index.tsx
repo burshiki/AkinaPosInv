@@ -1,10 +1,8 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link, router, useForm } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
-import { Label } from '@/Components/ui/label';
 import { Badge } from '@/Components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/Components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/Components/ui/table';
 import { ScrollArea } from '@/Components/ui/scroll-area';
 import { Pagination } from '@/Components/ui/pagination';
@@ -13,6 +11,7 @@ import { formatCurrency, formatDate } from '@/lib/utils';
 import { useDebounce } from '@/hooks/use-debounce';
 import { Eye, Ban, Search, ShoppingCart } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { useConfirm } from '@/Components/app/confirm-dialog';
 import type { Sale, PaginatedData } from '@/types';
 
 interface Props {
@@ -26,27 +25,11 @@ const STATUS_CFG: Record<string, 'default' | 'secondary' | 'destructive' | 'outl
 };
 
 export default function SalesIndex({ sales, filters }: Props) {
+    const confirm = useConfirm();
     const [search, setSearch] = useState(filters.search ?? '');
     const [dateFrom, setDateFrom] = useState(filters.date_from ?? '');
     const [dateTo, setDateTo] = useState(filters.date_to ?? '');
     const debouncedSearch = useDebounce(search, 300);
-    const [voidTarget, setVoidTarget] = useState<Sale | null>(null);
-
-    const voidForm = useForm({ password: '', reason: 'Voided by cashier' });
-
-    const openVoid = (sale: Sale) => {
-        voidForm.reset();
-        voidForm.clearErrors();
-        setVoidTarget(sale);
-    };
-
-    const handleVoidSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!voidTarget) return;
-        voidForm.post(route('sales.void', voidTarget.id), {
-            onSuccess: () => setVoidTarget(null),
-        });
-    };
 
     useEffect(() => {
         router.get(
@@ -156,7 +139,7 @@ export default function SalesIndex({ sales, filters }: Props) {
                                                 </Button>
                                                 {sale.status === 'completed' && (
                                                     <PermissionGate permission="sales.void">
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" title="Void Sale" onClick={() => openVoid(sale)}>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" title="Void Sale" onClick={() => handleVoid(sale)}>
                                                             <Ban className="h-4 w-4" />
                                                         </Button>
                                                     </PermissionGate>
@@ -171,53 +154,6 @@ export default function SalesIndex({ sales, filters }: Props) {
 
                 <Pagination data={sales} />
             </div>
-
-            <Dialog open={!!voidTarget} onOpenChange={(v) => { if (!v) setVoidTarget(null); }}>
-                <DialogContent className="max-w-md">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
-                            <Ban className="h-5 w-5 text-destructive" /> Void Sale
-                        </DialogTitle>
-                    </DialogHeader>
-
-                    <form onSubmit={handleVoidSubmit} className="space-y-4">
-                        <div className="rounded-md border bg-muted/40 px-4 py-3 text-sm space-y-1">
-                            <p className="text-muted-foreground">Receipt</p>
-                            <p className="font-mono font-medium">{voidTarget?.receipt_number}</p>
-                        </div>
-
-                        <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                            This action is irreversible. Voiding will restore stock and cancel the transaction.
-                        </div>
-
-                        <div className="space-y-1.5">
-                            <Label htmlFor="void_password">Your Password</Label>
-                            <Input
-                                id="void_password"
-                                type="password"
-                                placeholder="Enter your password to confirm"
-                                value={voidForm.data.password}
-                                onChange={(e) => voidForm.setData('password', e.target.value)}
-                                autoFocus
-                            />
-                            {voidForm.errors.password && (
-                                <p className="text-sm text-destructive">{voidForm.errors.password}</p>
-                            )}
-                        </div>
-
-                        <DialogFooter>
-                            <Button type="button" variant="outline" onClick={() => setVoidTarget(null)}>Cancel</Button>
-                            <Button
-                                type="submit"
-                                variant="destructive"
-                                disabled={voidForm.processing || !voidForm.data.password}
-                            >
-                                {voidForm.processing ? 'Voiding…' : 'Void Sale'}
-                            </Button>
-                        </DialogFooter>
-                    </form>
-                </DialogContent>
-            </Dialog>
         </AuthenticatedLayout>
     );
 }
