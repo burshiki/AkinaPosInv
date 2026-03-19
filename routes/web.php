@@ -36,6 +36,8 @@ use App\Http\Controllers\BillController;
 use App\Http\Controllers\RecurringBillController;
 use App\Http\Controllers\RepairController;
 use App\Http\Controllers\BackupController;
+use App\Http\Controllers\ProductImportController;
+use App\Http\Controllers\CustomerImportController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -54,6 +56,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Inventory module
     Route::middleware('permission:inventory.view')->group(function () {
+        // Batch import (must be before resource to avoid {product} binding)
+        Route::get('products/import-template', [ProductImportController::class, 'template'])
+            ->name('products.import-template')
+            ->withoutMiddleware('permission:inventory.view');
+        Route::post('products/import', [ProductImportController::class, 'import'])
+            ->name('products.import')
+            ->middleware('permission:inventory.create');
+
         Route::resource('products', ProductController::class);
         Route::resource('categories', CategoryController::class)
             ->only(['index', 'store', 'update', 'destroy']);
@@ -190,6 +200,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Customers module
     Route::middleware('permission:customers.view')->group(function () {
+        Route::get('customers/import-template', [CustomerImportController::class, 'template'])
+            ->name('customers.import-template');
+        Route::post('customers/import', [CustomerImportController::class, 'import'])
+            ->name('customers.import')
+            ->middleware('permission:customers.create');
         Route::post('customers/quick', [CustomerController::class, 'quickStore'])
             ->name('customers.quick-store')
             ->middleware('permission:customers.create');

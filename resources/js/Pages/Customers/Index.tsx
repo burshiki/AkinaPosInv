@@ -13,7 +13,8 @@ import { ScrollArea } from '@/Components/ui/scroll-area';
 import { Pagination } from '@/Components/ui/pagination';
 import { PermissionGate } from '@/Components/app/permission-gate';
 import { useDebounce } from '@/hooks/use-debounce';
-import { Plus, Search, Eye, Pencil, Trash2, CreditCard, Banknote, Users } from 'lucide-react';
+import { Plus, Search, Eye, Pencil, Trash2, CreditCard, Banknote, Users, Upload } from 'lucide-react';
+import CustomerBatchUploadModal from './BatchUploadModal';
 import { useState, useEffect } from 'react';
 import { useConfirm } from '@/Components/app/confirm-dialog';
 import type { Customer, PaginatedData } from '@/types';
@@ -29,6 +30,7 @@ export default function CustomersIndex({ customers, filters }: Props) {
     const debouncedSearch = useDebounce(search, 300);
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+    const [batchUploadOpen, setBatchUploadOpen] = useState(false);
 
     const [debtDialogOpen, setDebtDialogOpen] = useState(false);
     const [debtCustomer, setDebtCustomer] = useState<Customer | null>(null);
@@ -126,11 +128,18 @@ export default function CustomersIndex({ customers, filters }: Props) {
                         <Users className="h-6 w-6" />
                         Customers
                     </h1>
-                    <PermissionGate permission="customers.create">
-                        <Button onClick={openCreate}>
-                            <Plus className="h-4 w-4 mr-1.5" /> Add Customer
-                        </Button>
-                    </PermissionGate>
+                    <div className="flex items-center gap-2">
+                        <PermissionGate permission="customers.create">
+                            <Button variant="outline" onClick={() => setBatchUploadOpen(true)}>
+                                <Upload className="h-4 w-4 mr-1.5" /> Batch Upload
+                            </Button>
+                        </PermissionGate>
+                        <PermissionGate permission="customers.create">
+                            <Button onClick={openCreate}>
+                                <Plus className="h-4 w-4 mr-1.5" /> Add Customer
+                            </Button>
+                        </PermissionGate>
+                    </div>
                 </div>
 
                 {/* Filters */}
@@ -332,6 +341,11 @@ export default function CustomersIndex({ customers, filters }: Props) {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            <CustomerBatchUploadModal
+                open={batchUploadOpen}
+                onClose={() => setBatchUploadOpen(false)}
+            />
         </AuthenticatedLayout>
     );
 }

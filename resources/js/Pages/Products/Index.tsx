@@ -16,7 +16,8 @@ import { StockBadge } from '@/Components/app/stock-badge';
 import { PermissionGate } from '@/Components/app/permission-gate';
 import { formatCurrency } from '@/lib/utils';
 import { useDebounce } from '@/hooks/use-debounce';
-import { Plus, Search, Eye, Pencil, Trash2, Package } from 'lucide-react';
+import { Plus, Search, Eye, Pencil, Trash2, Package, Upload } from 'lucide-react';
+import BatchUploadModal from './BatchUploadModal';
 import { useState, useEffect } from 'react';
 import { useConfirm } from '@/Components/app/confirm-dialog';
 import type { Product, Category, PaginatedData } from '@/types';
@@ -33,6 +34,7 @@ export default function ProductsIndex({ products, categories, filters }: Props) 
     const debouncedSearch = useDebounce(search, 300);
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+    const [batchUploadOpen, setBatchUploadOpen] = useState(false);
 
     const form = useForm({
         name: '',
@@ -133,11 +135,18 @@ export default function ProductsIndex({ products, categories, filters }: Props) 
                         <Package className="h-6 w-6" />
                         Products
                     </h1>
-                    <PermissionGate permission="inventory.create">
-                        <Button onClick={openCreate}>
-                            <Plus className="h-4 w-4 mr-1.5" /> Add Product
-                        </Button>
-                    </PermissionGate>
+                    <div className="flex items-center gap-2">
+                        <PermissionGate permission="inventory.create">
+                            <Button variant="outline" onClick={() => setBatchUploadOpen(true)}>
+                                <Upload className="h-4 w-4 mr-1.5" /> Batch Upload
+                            </Button>
+                        </PermissionGate>
+                        <PermissionGate permission="inventory.create">
+                            <Button onClick={openCreate}>
+                                <Plus className="h-4 w-4 mr-1.5" /> Add Product
+                            </Button>
+                        </PermissionGate>
+                    </div>
                 </div>
 
                 {/* Filters */}
@@ -373,6 +382,11 @@ export default function ProductsIndex({ products, categories, filters }: Props) 
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            <BatchUploadModal
+                open={batchUploadOpen}
+                onClose={() => setBatchUploadOpen(false)}
+            />
         </AuthenticatedLayout>
     );
 }
