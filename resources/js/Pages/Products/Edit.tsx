@@ -1,5 +1,7 @@
+import { useState, useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, Link } from '@inertiajs/react';
+import { Percent } from 'lucide-react';
 import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import { Label } from '@/Components/ui/label';
@@ -30,6 +32,19 @@ export default function ProductsEdit({ product, categories }: Props) {
         is_assembled: product.is_assembled,
         is_active: product.is_active,
     });
+
+    const [useMarkup, setUseMarkup] = useState(false);
+    const [markupPercent, setMarkupPercent] = useState('');
+
+    useEffect(() => {
+        if (!useMarkup) return;
+        const cost = parseFloat(data.cost_price);
+        const pct = parseFloat(markupPercent);
+        if (!isNaN(cost) && cost > 0 && !isNaN(pct) && pct >= 0) {
+            setData('selling_price', (cost * (1 + pct / 100)).toFixed(2));
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [useMarkup, markupPercent, data.cost_price]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -92,8 +107,55 @@ export default function ProductsEdit({ product, categories }: Props) {
                                     {errors.cost_price && <p className="text-sm text-destructive">{errors.cost_price}</p>}
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="selling_price">Selling Price *</Label>
-                                    <Input id="selling_price" type="number" step="0.01" min="0" value={data.selling_price} onChange={(e) => setData('selling_price', e.target.value)} />
+                                    <div className="flex items-center justify-between">
+                                        <Label htmlFor="selling_price">Selling Price *</Label>
+                                        <button
+                                            type="button"
+                                            onClick={() => setUseMarkup(!useMarkup)}
+                                            className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border transition-colors ${
+                                                useMarkup
+                                                    ? 'bg-primary text-primary-foreground border-primary'
+                                                    : 'border-border text-muted-foreground hover:text-foreground'
+                                            }`}
+                                        >
+                                            <Percent className="h-3 w-3" />
+                                            Markup
+                                        </button>
+                                    </div>
+                                    {useMarkup ? (
+                                        <div className="flex gap-2">
+                                            <div className="relative w-24 shrink-0">
+                                                <Input
+                                                    type="number"
+                                                    step="0.1"
+                                                    min="0"
+                                                    placeholder="15"
+                                                    value={markupPercent}
+                                                    onChange={(e) => setMarkupPercent(e.target.value)}
+                                                    className="pr-6"
+                                                />
+                                                <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
+                                            </div>
+                                            <Input
+                                                id="selling_price"
+                                                type="number"
+                                                step="0.01"
+                                                min="0"
+                                                value={data.selling_price}
+                                                readOnly
+                                                className="flex-1 bg-muted/40"
+                                            />
+                                        </div>
+                                    ) : (
+                                        <Input
+                                            id="selling_price"
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            value={data.selling_price}
+                                            onChange={(e) => setData('selling_price', e.target.value)}
+                                        />
+                                    )}
                                     {errors.selling_price && <p className="text-sm text-destructive">{errors.selling_price}</p>}
                                 </div>
                             </div>

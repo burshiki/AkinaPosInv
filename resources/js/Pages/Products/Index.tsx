@@ -16,7 +16,7 @@ import { StockBadge } from '@/Components/app/stock-badge';
 import { PermissionGate } from '@/Components/app/permission-gate';
 import { formatCurrency } from '@/lib/utils';
 import { useDebounce } from '@/hooks/use-debounce';
-import { Plus, Search, Eye, Pencil, Trash2, Package, Upload } from 'lucide-react';
+import { Plus, Search, Eye, Pencil, Trash2, Package, Upload, Percent } from 'lucide-react';
 import BatchUploadModal from './BatchUploadModal';
 import { useState, useEffect } from 'react';
 import { useConfirm } from '@/Components/app/confirm-dialog';
@@ -35,6 +35,8 @@ export default function ProductsIndex({ products, categories, filters }: Props) 
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
     const [batchUploadOpen, setBatchUploadOpen] = useState(false);
+    const [useMarkup, setUseMarkup] = useState(false);
+    const [markupPercent, setMarkupPercent] = useState('');
 
     const form = useForm({
         name: '',
@@ -75,6 +77,8 @@ export default function ProductsIndex({ products, categories, filters }: Props) 
         form.setData({ name: '', sku: '', barcode: '', description: '', category_id: '', cost_price: '', selling_price: '', stock_quantity: '0', low_stock_threshold: '10', is_assembled: false, is_component: false, has_warranty: false, warranty_months: '', is_active: true, tax_rate: '', is_vat_exempt: false });
         form.clearErrors();
         setEditingProduct(null);
+        setUseMarkup(false);
+        setMarkupPercent('');
         setDialogOpen(true);
     };
 
@@ -99,6 +103,8 @@ export default function ProductsIndex({ products, categories, filters }: Props) 
         });
         form.clearErrors();
         setEditingProduct(product);
+        setUseMarkup(false);
+        setMarkupPercent('');
         setDialogOpen(true);
     };
 
@@ -112,6 +118,16 @@ export default function ProductsIndex({ products, categories, filters }: Props) 
             form.post(route('products.store'), { onSuccess: () => setDialogOpen(false) });
         }
     };
+
+    useEffect(() => {
+        if (!useMarkup) return;
+        const cost = parseFloat(form.data.cost_price);
+        const pct = parseFloat(markupPercent);
+        if (!isNaN(cost) && cost > 0 && !isNaN(pct) && pct >= 0) {
+            form.setData('selling_price', (cost * (1 + pct / 100)).toFixed(2));
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [useMarkup, markupPercent, form.data.cost_price]);
 
     const handleDelete = async (product: Product) => {
         const ok = await confirm({
@@ -300,8 +316,55 @@ export default function ProductsIndex({ products, categories, filters }: Props) 
                                     {form.errors.cost_price && <p className="text-sm text-destructive">{form.errors.cost_price}</p>}
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="p_price">Selling Price *</Label>
-                                    <Input id="p_price" type="number" step="0.01" min="0" value={form.data.selling_price} onChange={(e) => form.setData('selling_price', e.target.value)} />
+                                    <div className="flex items-center justify-between">
+                                        <Label htmlFor="p_price">Selling Price *</Label>
+                                        <button
+                                            type="button"
+                                            onClick={() => setUseMarkup(!useMarkup)}
+                                            className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border transition-colors ${
+                                                useMarkup
+                                                    ? 'bg-primary text-primary-foreground border-primary'
+                                                    : 'border-border text-muted-foreground hover:text-foreground'
+                                            }`}
+                                        >
+                                            <Percent className="h-3 w-3" />
+                                            Markup
+                                        </button>
+                                    </div>
+                                    {useMarkup ? (
+                                        <div className="flex gap-2">
+                                            <div className="relative w-24 shrink-0">
+                                                <Input
+                                                    type="number"
+                                                    step="0.1"
+                                                    min="0"
+                                                    placeholder="15"
+                                                    value={markupPercent}
+                                                    onChange={(e) => setMarkupPercent(e.target.value)}
+                                                    className="pr-6"
+                                                />
+                                                <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
+                                            </div>
+                                            <Input
+                                                id="p_price"
+                                                type="number"
+                                                step="0.01"
+                                                min="0"
+                                                value={form.data.selling_price}
+                                                readOnly
+                                                className="flex-1 bg-muted/40"
+                                            />
+                                        </div>
+                                    ) : (
+                                        <Input
+                                            id="p_price"
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            value={form.data.selling_price}
+                                            onChange={(e) => form.setData('selling_price', e.target.value)}
+                                        />
+                                    )}
                                     {form.errors.selling_price && <p className="text-sm text-destructive">{form.errors.selling_price}</p>}
                                 </div>
                             </div>
