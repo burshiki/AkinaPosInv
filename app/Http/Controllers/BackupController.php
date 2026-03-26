@@ -3,10 +3,78 @@
 namespace App\Http\Controllers;
 
 use PDO;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class BackupController extends Controller
 {
+    public function restore(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'backup_file' => ['required', 'file', 'max:102400'], // 100 MB max
+        ]);
+
+        $db = config('database.connections.' . config('database.default'));
+
+        abort_if(($db['driver'] ?? '') !== 'mysql', 400, 'Restore only supports MySQL.');
+
+        $file      = $request->file('backup_file');
+        $extension = strtolower($file->getClientOriginalExtension());
+
+        if ($extension !== 'sql') {
+            return back()->withErrors(['backup_file' => 'Only .sql backup files are allowed.']);
+        }
+
+        $sql = file_get_contents($file->getRealPath());
+
+        if (empty(trim($sql))) {
+            return back()->withErrors(['backup_file' => 'The backup file is empty.']);
+        }
+
+        $host     = $db['host']     ?? '127.0.0.1';
+        $port     = (string) ($db['port'] ?? '3306');
+        $dbname   = $db['database'];
+        $user     = $db['username'];
+        $password = $db['password'] ?? '';
+
+        try {
+            $pdo = new PDO(
+                "mysql:host={$host};port={$port};dbname={$dbname};charset=utf8mb4",
+                $user,
+                $password,
+                [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+            );
+
+            $pdo->exec('SET FOREIGN_KEY_CHECKS=0');
+            $pdo->beginTransaction();
+
+            $statement = '';
+            foreach (explode("\n", $sql) as $line) {
+                $trimmed = trim($line);
+                if ($trimmed === '' || str_starts_with($trimmed, '--')) {
+                    continue;
+                }
+                $statement .= $line . "\n";
+                if (str_ends_with($trimmed, ';')) {
+                    $pdo->exec(rtrim($statement));
+                    $statement = '';
+                }
+            }
+
+            $pdo->commit();
+            $pdo->exec('SET FOREIGN_KEY_CHECKS=1');
+
+        } catch (\Exception $e) {
+            if (isset($pdo) && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            return back()->withErrors(['backup_file' => 'Restore failed: ' . $e->getMessage()]);
+        }
+
+        return back()->with('success', 'Database restored successfully. Please log out and log back in.');
+    }
+
     public function download(): StreamedResponse
     {
         $db = config('database.connections.' . config('database.default'));

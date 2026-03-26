@@ -195,6 +195,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware('permission:reports.view')->group(function () {
         Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
         Route::get('reports/internal-use/print', [ReportController::class, 'printInternalUse'])->name('reports.internal-use.print');
+        Route::get('reports/monthly/print', [ReportController::class, 'printMonthlyIncome'])->name('reports.monthly.print');
         Route::get('reports/{report}', [ReportController::class, 'show'])->name('reports.show');
     });
 
@@ -510,7 +511,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Database backup (admin only)
     Route::get('backup/download', [BackupController::class, 'download'])
         ->name('backup.download')
-        ->middleware('permission:users.view');
+        ->middleware('permission:settings.manage');
+    Route::post('backup/restore', [BackupController::class, 'restore'])
+        ->name('backup.restore')
+        ->middleware('permission:settings.manage');
 });
 
 require __DIR__.'/auth.php';

@@ -132,4 +132,13 @@ class ReportController extends Controller
             'filters' => ['start_date' => $from ?? '', 'end_date' => $to ?? ''],
         ]);
     }
+
+    public function printMonthlyIncome()
+    {
+        $from   = request('start_date') ?: now()->startOfMonth()->toDateString();
+        $to     = request('end_date')   ?: now()->toDateString();
+        $report = $this->reportService->monthlyReport($from, $to);
+
+        return response()->view('reports.monthly-income', ['report' => $report]);
+    }
 }

@@ -5,13 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import { Label } from '@/Components/ui/label';
+import { Badge } from '@/Components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/Components/ui/table';
 import { ScrollArea } from '@/Components/ui/scroll-area';
 import { formatCurrency, formatDate, formatDateOnly } from '@/lib/utils';
 import {
     CalendarDays, Wallet, Landmark, Package, PackageMinus, Users,
     TrendingUp, TrendingDown, DollarSign, BarChart3,
-    ChevronDown, ChevronUp, ShoppingCart,
+    ChevronDown, ChevronUp, ShoppingCart, Printer, FileWarning,
 } from 'lucide-react';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -69,6 +70,25 @@ interface DailyEntry {
     profit: number;
 }
 
+interface ApBill {
+    id: number;
+    bill_number: string;
+    supplier_name: string;
+    category: string | null;
+    total_amount: number;
+    paid_amount: number;
+    balance: number;
+    status: string;
+    bill_date: string | null;
+    due_date: string | null;
+}
+
+interface ApBySupplier {
+    supplier: string;
+    count: number;
+    total: number;
+}
+
 interface Report {
     period: { start: string; end: string };
     assets: {
@@ -113,6 +133,12 @@ interface Report {
         by_product: ByProduct[];
         transactions: InternalUseTransaction[];
     };
+    accounts_payable: {
+        bills: ApBill[];
+        by_supplier: ApBySupplier[];
+        total: number;
+        count: number;
+    };
 }
 
 interface Props {
@@ -147,6 +173,7 @@ export default function MonthlyReport({ report, filters }: Props) {
     const [endDate, setEndDate]     = useState(filters.end_date   ?? '');
     const [showBankAccounts, setShowBankAccounts] = useState(false);
     const [showTransactions, setShowTransactions] = useState(false);
+    const [showApBills, setShowApBills] = useState(false);
 
     function runReport() {
         if (!startDate || !endDate) return;
@@ -165,6 +192,11 @@ export default function MonthlyReport({ report, filters }: Props) {
         setEndDate(now.toISOString().slice(0, 10));
     }
 
+    function openPrint() {
+        const url = route('reports.monthly.print') + `?start_date=${startDate}&end_date=${endDate}`;
+        window.open(url, '_blank');
+    }
+
     return (
         <AuthenticatedLayout>
             <Head title="Monthly Report" />
@@ -176,6 +208,12 @@ export default function MonthlyReport({ report, filters }: Props) {
                         <CalendarDays className="h-6 w-6" />
                         Monthly Report
                     </h1>
+                    {report && (
+                        <Button variant="outline" onClick={openPrint}>
+                            <Printer className="h-4 w-4 mr-1.5" />
+                            Print Income Report
+                        </Button>
+                    )}
                 </div>
 
                 {/* ── Filter Bar ─────────────────────────────────────────── */}
@@ -636,6 +674,141 @@ export default function MonthlyReport({ report, filters }: Props) {
                                     <span className="font-semibold text-lg">Net Loss</span>
                                     <span className="text-2xl font-bold font-mono">{formatCurrency(report.net_income)}</span>
                                 </div>
+                            )}
+                        </div>
+
+                        {/* ── Accounts Payable ─────────────────────────────── */}
+                        <div>
+                            <SectionHeading icon={FileWarning}>
+                                Accounts Payable — Unpaid / Partial
+                            </SectionHeading>
+
+                            {report.accounts_payable.count === 0 ? (
+                                <div className="rounded-md border h-20 flex items-center justify-center text-muted-foreground text-sm">
+                                    No outstanding bills.
+                                </div>
+                            ) : (
+                                <>
+                                    {/* AP summary cards */}
+                                    <div className="grid gap-4 md:grid-cols-3 mb-4">
+                                        <Card>
+                                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                                <CardTitle className="text-sm font-medium">Outstanding Bills</CardTitle>
+                                                <FileWarning className="h-4 w-4 text-muted-foreground" />
+                                            </CardHeader>
+                                            <CardContent>
+                                                <div className="text-2xl font-bold">{report.accounts_payable.count}</div>
+                                                <p className="text-xs text-muted-foreground">unpaid or partially paid</p>
+                                            </CardContent>
+                                        </Card>
+                                        <Card>
+                                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                                <CardTitle className="text-sm font-medium">Suppliers with Balance</CardTitle>
+                                                <Users className="h-4 w-4 text-muted-foreground" />
+                                            </CardHeader>
+                                            <CardContent>
+                                                <div className="text-2xl font-bold">{report.accounts_payable.by_supplier.length}</div>
+                                                <p className="text-xs text-muted-foreground">unique suppliers</p>
+                                            </CardContent>
+                                        </Card>
+                                        <Card className="border-destructive/40 bg-destructive/5">
+                                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                                <CardTitle className="text-sm font-medium text-destructive">Total AP Balance</CardTitle>
+                                                <TrendingDown className="h-4 w-4 text-destructive" />
+                                            </CardHeader>
+                                            <CardContent>
+                                                <div className="text-2xl font-bold text-destructive">
+                                                    {formatCurrency(report.accounts_payable.total)}
+                                                </div>
+                                                <p className="text-xs text-muted-foreground">total remaining balance</p>
+                                            </CardContent>
+                                        </Card>
+                                    </div>
+
+                                    {/* By-supplier breakdown */}
+                                    {report.accounts_payable.by_supplier.length > 0 && (
+                                        <div className="rounded-md border mb-3">
+                                            <div className="px-4 py-3 border-b">
+                                                <p className="text-sm font-medium">Balance by Supplier</p>
+                                            </div>
+                                            <div className="p-4 space-y-2">
+                                                {report.accounts_payable.by_supplier.map((s) => (
+                                                    <div key={s.supplier} className="flex items-center justify-between text-sm">
+                                                        <span className="text-muted-foreground">{s.supplier}</span>
+                                                        <div className="text-right">
+                                                            <div className="font-mono font-medium">{formatCurrency(s.total)}</div>
+                                                            <div className="text-xs text-muted-foreground">{s.count} bill{s.count !== 1 ? 's' : ''}</div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Collapsible bill-by-bill list */}
+                                    <div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowApBills(!showApBills)}
+                                            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+                                        >
+                                            {showApBills
+                                                ? <ChevronUp className="h-3.5 w-3.5" />
+                                                : <ChevronDown className="h-3.5 w-3.5" />}
+                                            {showApBills ? 'Hide' : 'Show'} all outstanding bills ({report.accounts_payable.count})
+                                        </button>
+
+                                        {showApBills && (
+                                            <div className="mt-2 rounded-md border">
+                                                <ScrollArea>
+                                                    <Table>
+                                                        <TableHeader>
+                                                            <TableRow>
+                                                                <TableHead>Bill #</TableHead>
+                                                                <TableHead>Supplier</TableHead>
+                                                                <TableHead>Category</TableHead>
+                                                                <TableHead>Due Date</TableHead>
+                                                                <TableHead>Status</TableHead>
+                                                                <TableHead className="text-right">Total</TableHead>
+                                                                <TableHead className="text-right">Paid</TableHead>
+                                                                <TableHead className="text-right">Balance</TableHead>
+                                                            </TableRow>
+                                                        </TableHeader>
+                                                        <TableBody>
+                                                            {report.accounts_payable.bills.map((b) => {
+                                                                const isOverdue = b.due_date && new Date(b.due_date) < new Date();
+                                                                return (
+                                                                    <TableRow key={b.id}>
+                                                                        <TableCell className="font-mono text-sm">{b.bill_number}</TableCell>
+                                                                        <TableCell>{b.supplier_name}</TableCell>
+                                                                        <TableCell className="text-muted-foreground text-sm">
+                                                                            {b.category ?? <span className="text-muted-foreground">—</span>}
+                                                                        </TableCell>
+                                                                        <TableCell className={`font-mono text-sm ${isOverdue ? 'text-destructive font-semibold' : ''}`}>
+                                                                            {b.due_date ? formatDateOnly(b.due_date) : <span className="text-muted-foreground">—</span>}
+                                                                        </TableCell>
+                                                                        <TableCell>
+                                                                            <Badge variant={b.status === 'partial' ? 'outline' : 'destructive'}>
+                                                                                {b.status === 'partial' ? 'Partial' : 'Unpaid'}
+                                                                            </Badge>
+                                                                        </TableCell>
+                                                                        <TableCell className="text-right font-mono text-sm">{formatCurrency(b.total_amount)}</TableCell>
+                                                                        <TableCell className="text-right font-mono text-sm">{formatCurrency(b.paid_amount)}</TableCell>
+                                                                        <TableCell className="text-right font-mono text-sm font-semibold text-destructive">{formatCurrency(b.balance)}</TableCell>
+                                                                    </TableRow>
+                                                                );
+                                                            })}
+                                                            <TableRow className="font-semibold bg-muted/30">
+                                                                <TableCell colSpan={7}>Total Outstanding</TableCell>
+                                                                <TableCell className="text-right font-mono text-destructive">{formatCurrency(report.accounts_payable.total)}</TableCell>
+                                                            </TableRow>
+                                                        </TableBody>
+                                                    </Table>
+                                                </ScrollArea>
+                                            </div>
+                                        )}
+                                    </div>
+                                </>
                             )}
                         </div>
 

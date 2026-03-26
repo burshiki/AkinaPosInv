@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\BankAccount;
 use App\Models\BankAccountLedger;
+use App\Models\Bill;
 use App\Models\BillPayment;
 use App\Models\CashDrawerExpense;
 use App\Models\CashDrawerReceipt;
@@ -591,6 +592,18 @@ class ReportService
             + (float) $bankOutflowRows->sum('amount')
             + $internalUseCost;
 
+        // ── Accounts Payable (unpaid/partial bills) ─────────────────────────
+        $unpaidBills = Bill::whereIn('status', ['unpaid', 'partial'])
+            ->orderBy('due_date')
+            ->get();
+        $apBySupplier = $unpaidBills->groupBy('supplier_name')
+            ->map(fn ($g, $name) => [
+                'supplier' => $name ?: 'Unknown',
+                'count'    => $g->count(),
+                'total'    => (float) $g->sum('balance'),
+            ])->values()->toArray();
+        $totalAP = (float) $unpaidBills->sum('balance');
+
         return [
             'period'  => ['start' => $from, 'end' => $to],
             'assets'  => [
@@ -645,6 +658,23 @@ class ReportService
             ],
             'net_income'   => $totalIncome - $totalExpenses,
             'internal_use' => $this->internalUseReport($from, $to),
+            'accounts_payable' => [
+                'bills' => $unpaidBills->map(fn ($b) => [
+                    'id'            => $b->id,
+                    'bill_number'   => $b->bill_number,
+                    'supplier_name' => $b->supplier_name,
+                    'category'      => $b->category,
+                    'total_amount'  => (float) $b->total_amount,
+                    'paid_amount'   => (float) $b->paid_amount,
+                    'balance'       => (float) $b->balance,
+                    'status'        => $b->status,
+                    'bill_date'     => $b->bill_date?->toDateString(),
+                    'due_date'      => $b->due_date?->toDateString(),
+                ])->values()->toArray(),
+                'by_supplier' => $apBySupplier,
+                'total'       => $totalAP,
+                'count'       => $unpaidBills->count(),
+            ],
         ];
     }
 }
