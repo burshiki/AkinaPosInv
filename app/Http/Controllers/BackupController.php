@@ -15,6 +15,10 @@ class BackupController extends Controller
             'backup_file' => ['required', 'file', 'max:102400'], // 100 MB max
         ]);
 
+        // Remove execution time limit — large SQL files can take many minutes
+        set_time_limit(0);
+        ini_set('memory_limit', '256M');
+
         $db = config('database.connections.' . config('database.default'));
 
         abort_if(($db['driver'] ?? '') !== 'mysql', 400, 'Restore only supports MySQL.');
@@ -26,11 +30,19 @@ class BackupController extends Controller
             return back()->withErrors(['backup_file' => 'Only .sql backup files are allowed.']);
         }
 
-        $sql = file_get_contents($file->getRealPath());
+        $path = $file->getRealPath();
+        $handle = fopen($path, 'r');
+        if ($handle === false) {
+            return back()->withErrors(['backup_file' => 'Could not read the uploaded file.']);
+        }
 
-        if (empty(trim($sql))) {
+        // Peek at start to ensure non-empty
+        $firstChunk = fread($handle, 512);
+        if (empty(trim($firstChunk))) {
+            fclose($handle);
             return back()->withErrors(['backup_file' => 'The backup file is empty.']);
         }
+        rewind($handle);
 
         $host     = $db['host']     ?? '127.0.0.1';
         $port     = (string) ($db['port'] ?? '3306');
@@ -50,12 +62,12 @@ class BackupController extends Controller
             $pdo->beginTransaction();
 
             $statement = '';
-            foreach (explode("\n", $sql) as $line) {
+            while (($line = fgets($handle)) !== false) {
                 $trimmed = trim($line);
                 if ($trimmed === '' || str_starts_with($trimmed, '--')) {
                     continue;
                 }
-                $statement .= $line . "\n";
+                $statement .= $line;
                 if (str_ends_with($trimmed, ';')) {
                     $pdo->exec(rtrim($statement));
                     $statement = '';
@@ -70,6 +82,8 @@ class BackupController extends Controller
                 $pdo->rollBack();
             }
             return back()->withErrors(['backup_file' => 'Restore failed: ' . $e->getMessage()]);
+        } finally {
+            fclose($handle);
         }
 
         return back()->with('success', 'Database restored successfully. Please log out and log back in.');
