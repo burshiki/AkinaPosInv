@@ -6,26 +6,26 @@
     <title>Monthly Income Report — {{ $report['period']['start'] }} to {{ $report['period']['end'] }}</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #111; background: #fff; padding: 10mm 12mm; }
+        body { font-family: Arial, Helvetica, sans-serif; font-size: 9pt; color: #111; background: #fff; padding: 10mm 12mm; }
 
         .sheet-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #111; padding-bottom: 6px; margin-bottom: 10px; }
-        .sheet-header .title { font-size: 17px; font-weight: bold; }
-        .sheet-header .meta  { text-align: right; font-size: 10px; line-height: 1.6; }
+        .sheet-header .title { font-size: 16pt; font-weight: bold; }
+        .sheet-header .meta  { text-align: right; font-size: 8pt; line-height: 1.6; }
 
         .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
         .summary-card { border: 1px solid #ccc; border-radius: 4px; padding: 7px 10px; text-align: center; }
-        .summary-card .val { font-size: 16px; font-weight: bold; }
-        .summary-card .lbl { font-size: 9.5px; color: #666; margin-top: 2px; }
+        .summary-card .val { font-size: 13pt; font-weight: bold; }
+        .summary-card .lbl { font-size: 8pt; color: #666; margin-top: 2px; }
 
-        .section-title { font-size: 11.5px; font-weight: bold; background: #e8e8e8; border-left: 4px solid #444; padding: 3px 6px; margin: 12px 0 5px; }
+        .section-title { font-size: 9pt; font-weight: bold; background: #e8e8e8; border-left: 4px solid #444; padding: 3px 6px; margin: 12px 0 5px; }
 
         .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 14px; }
         .income-block { border: 1px solid #b7dfb7; border-radius: 4px; }
         .expense-block { border: 1px solid #f5b7b7; border-radius: 4px; }
-        .block-header { padding: 5px 10px; font-weight: bold; font-size: 11px; }
+        .block-header { padding: 5px 10px; font-weight: bold; font-size: 9pt; }
         .income-block .block-header  { background: #e8f5e9; color: #2e7d32; }
         .expense-block .block-header { background: #fdecea; color: #c62828; }
-        .line-row { display: flex; justify-content: space-between; padding: 3px 10px; font-size: 10.5px; border-bottom: 1px solid #f0f0f0; }
+        .line-row { display: flex; justify-content: space-between; padding: 3px 10px; font-size: 8.5pt; border-bottom: 1px solid #f0f0f0; }
         .line-row:last-child { border-bottom: none; }
         .line-row .lbl { color: #555; }
         .line-row.sub .lbl { padding-left: 12px; color: #777; }
@@ -36,23 +36,23 @@
         .net-income-box { display: flex; justify-content: space-between; align-items: center; border-radius: 5px; padding: 10px 14px; margin-bottom: 14px; }
         .net-income-box.positive { border: 2px solid #81c784; background: #f1f8f1; color: #1b5e20; }
         .net-income-box.negative { border: 2px solid #e57373; background: #fdf2f2; color: #7f0000; }
-        .net-income-box .label { font-size: 14px; font-weight: bold; }
-        .net-income-box .amount { font-size: 20px; font-weight: bold; font-family: monospace; }
+        .net-income-box .label { font-size: 12pt; font-weight: bold; }
+        .net-income-box .amount { font-size: 16pt; font-weight: bold; font-family: monospace; }
 
         table { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
-        thead th { background: #333; color: #fff; text-align: left; padding: 4px 6px; font-size: 10.5px; }
+        thead th { background: #333; color: #fff; text-align: left; padding: 4px 6px; font-size: 8.5pt; }
         thead th.right { text-align: right; }
         tbody tr:nth-child(even) { background: #f9f9f9; }
         tbody tr { border-bottom: 1px solid #ddd; }
-        tbody td { padding: 3.5px 6px; font-size: 10.5px; vertical-align: middle; }
+        tbody td { padding: 3.5px 6px; font-size: 8.5pt; vertical-align: middle; }
         tbody td.right  { text-align: right; }
-        tbody td.mono   { font-family: monospace; font-size: 10px; }
+        tbody td.mono   { font-family: monospace; font-size: 8pt; }
         tbody td.red    { color: #c62828; font-weight: bold; }
         tbody td.orange { color: #e65100; }
-        tfoot td { padding: 5px 6px; font-weight: bold; font-size: 11px; border-top: 2px solid #333; background: #f0f0f0; }
+        tfoot td { padding: 5px 6px; font-weight: bold; font-size: 9pt; border-top: 2px solid #333; background: #f0f0f0; }
         tfoot td.right { text-align: right; }
 
-        .badge { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 9.5px; font-weight: bold; }
+        .badge { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 8pt; font-weight: bold; }
         .badge-unpaid  { background: #fdecea; color: #c62828; border: 1px solid #f5c6c6; }
         .badge-partial { background: #fff8e1; color: #f57f17; border: 1px solid #ffe082; }
         .overdue { color: #c62828; font-weight: bold; }
@@ -60,9 +60,9 @@
         .signature-block { margin-top: 24px; display: flex; gap: 60px; }
         .sig-line { flex: 1; text-align: center; }
         .sig-line .line { border-bottom: 1px solid #333; height: 28px; margin-bottom: 3px; }
-        .sig-line .label { font-size: 9.5px; color: #555; }
+        .sig-line .label { font-size: 8pt; color: #555; }
 
-        .sheet-footer { margin-top: 14px; border-top: 1px solid #ccc; padding-top: 6px; display: flex; justify-content: space-between; font-size: 9.5px; color: #888; }
+        .sheet-footer { margin-top: 14px; border-top: 1px solid #ccc; padding-top: 6px; display: flex; justify-content: space-between; font-size: 8pt; color: #888; }
 
         @media print {
             body { padding: 8mm 10mm; }
