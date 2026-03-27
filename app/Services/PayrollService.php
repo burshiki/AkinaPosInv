@@ -65,7 +65,8 @@ class PayrollService
         $overtimePay = $this->computeOvertimePay($dailyRate, (float) $attendance->overtime_hours);
         $holidayPay = $this->computeHolidayPay($employee, $attendance, $dailyRate);
         $allowances = 0; // manual override later
-        $lateDeduction = (float) $attendance->late_deduction;
+        $hourlyRate = $dailyRate / 8;
+        $lateDeduction = round($hourlyRate * (float) $attendance->hours_late, 2);
 
         $grossPay = $basicPay + $overtimePay + $holidayPay + $allowances - $lateDeduction;
 

@@ -50,7 +50,7 @@ class AttendanceController extends Controller
                     'days_absent' => $entry['days_absent'],
                     'days_late' => $entry['days_late'] ?? 0,
                     'overtime_hours' => $entry['overtime_hours'] ?? 0,
-                    'late_deduction' => $entry['late_deduction'] ?? 0,
+                    'hours_late' => $entry['hours_late'] ?? 0,
                     'regular_holidays_not_worked' => $entry['regular_holidays_not_worked'] ?? 0,
                     'regular_holidays_worked' => $entry['regular_holidays_worked'] ?? 0,
                     'special_holidays_worked' => $entry['special_holidays_worked'] ?? 0,

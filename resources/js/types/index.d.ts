@@ -578,7 +578,7 @@ export interface AttendanceRecord {
     days_absent: number;
     days_late: number;
     overtime_hours: number;
-    late_deduction: number;
+    hours_late: number;
     regular_holidays_not_worked: number;
     regular_holidays_worked: number;
     special_holidays_worked: number;

@@ -20,7 +20,7 @@ class BulkAttendanceRequest extends FormRequest
             'attendance.*.days_absent'                         => ['required', 'numeric', 'min:0', 'max:31'],
             'attendance.*.days_late'                           => ['nullable', 'integer', 'min:0'],
             'attendance.*.overtime_hours'                      => ['nullable', 'numeric', 'min:0'],
-            'attendance.*.late_deduction'                      => ['nullable', 'numeric', 'min:0'],
+            'attendance.*.hours_late'                          => ['nullable', 'numeric', 'min:0'],
             'attendance.*.regular_holidays_not_worked'         => ['nullable', 'integer', 'min:0'],
             'attendance.*.regular_holidays_worked'             => ['nullable', 'integer', 'min:0'],
             'attendance.*.special_holidays_worked'             => ['nullable', 'integer', 'min:0'],

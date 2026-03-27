@@ -20,7 +20,7 @@ interface AttendanceRow {
     days_absent: number;
     days_late: number;
     overtime_hours: number;
-    late_deduction: number;
+    hours_late: number;
     regular_holidays_not_worked: number;
     regular_holidays_worked: number;
     special_holidays_worked: number;
@@ -38,7 +38,7 @@ export default function AttendanceEdit({ period, employees, existingAttendance, 
             days_absent: existing?.days_absent ?? 0,
             days_late: existing?.days_late ?? 0,
             overtime_hours: existing?.overtime_hours ?? 0,
-            late_deduction: existing?.late_deduction ?? 0,
+            hours_late: existing?.hours_late ?? 0,
             regular_holidays_not_worked: existing?.regular_holidays_not_worked ?? 0,
             regular_holidays_worked: existing?.regular_holidays_worked ?? 0,
             special_holidays_worked: existing?.special_holidays_worked ?? 0,
@@ -109,7 +109,7 @@ export default function AttendanceEdit({ period, employees, existingAttendance, 
                                     <th className="px-2 py-2 text-center font-medium">Absent</th>
                                     <th className="px-2 py-2 text-center font-medium">Late</th>
                                     <th className="px-2 py-2 text-center font-medium">OT Hrs</th>
-                                    <th className="px-2 py-2 text-center font-medium">Late Ded.</th>
+                                    <th className="px-2 py-2 text-center font-medium">Hrs Late</th>
                                     {regularHolidays.length > 0 && <>
                                         <th className="px-2 py-2 text-center font-medium bg-red-50 dark:bg-red-950/30">RH NW</th>
                                         <th className="px-2 py-2 text-center font-medium bg-red-50 dark:bg-red-950/30">RH W</th>
@@ -132,7 +132,7 @@ export default function AttendanceEdit({ period, employees, existingAttendance, 
                                         <td className="px-1 py-1"><Input type="text" inputMode="decimal" className="h-8 w-16 text-center" value={data.attendance[idx].days_absent} onChange={(e) => updateRow(idx, 'days_absent', Number(e.target.value))} /></td>
                                         <td className="px-1 py-1"><Input type="text" inputMode="numeric" className="h-8 w-16 text-center" value={data.attendance[idx].days_late} onChange={(e) => updateRow(idx, 'days_late', Number(e.target.value))} /></td>
                                         <td className="px-1 py-1"><Input type="text" inputMode="decimal" className="h-8 w-16 text-center" value={data.attendance[idx].overtime_hours} onChange={(e) => updateRow(idx, 'overtime_hours', Number(e.target.value))} /></td>
-                                        <td className="px-1 py-1"><Input type="text" inputMode="decimal" className="h-8 w-20 text-center" value={data.attendance[idx].late_deduction} onChange={(e) => updateRow(idx, 'late_deduction', Number(e.target.value))} /></td>
+                                        <td className="px-1 py-1"><Input type="text" inputMode="decimal" className="h-8 w-20 text-center" value={data.attendance[idx].hours_late} onChange={(e) => updateRow(idx, 'hours_late', Number(e.target.value))} /></td>
                                         {regularHolidays.length > 0 && <>
                                             <td className="px-1 py-1 bg-red-50/50 dark:bg-red-950/10"><Input type="text" inputMode="numeric" className="h-8 w-14 text-center" value={data.attendance[idx].regular_holidays_not_worked} onChange={(e) => updateRow(idx, 'regular_holidays_not_worked', Number(e.target.value))} /></td>
                                             <td className="px-1 py-1 bg-red-50/50 dark:bg-red-950/10"><Input type="text" inputMode="numeric" className="h-8 w-14 text-center" value={data.attendance[idx].regular_holidays_worked} onChange={(e) => updateRow(idx, 'regular_holidays_worked', Number(e.target.value))} /></td>
