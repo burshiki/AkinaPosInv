@@ -52,6 +52,7 @@ class ProductController extends Controller
     {
         $data = $request->validated();
         $data['cost_price'] = $data['cost_price'] ?? 0;
+        $data['tax_rate']   = $data['tax_rate']   ?? 0;
 
         $product = Product::create($data);
 
@@ -97,6 +98,7 @@ class ProductController extends Controller
     {
         $data = $request->validated();
         $data['cost_price'] = $data['cost_price'] ?? 0;
+        $data['tax_rate']   = $data['tax_rate']   ?? 0;
 
         DB::transaction(function () use ($data, $product) {
             $beforeQty = $product->stock_quantity;
