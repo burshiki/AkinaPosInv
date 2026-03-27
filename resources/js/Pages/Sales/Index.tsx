@@ -1,17 +1,18 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import { Badge } from '@/Components/ui/badge';
+import { Label } from '@/Components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/Components/ui/table';
 import { ScrollArea } from '@/Components/ui/scroll-area';
 import { Pagination } from '@/Components/ui/pagination';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/Components/ui/dialog';
 import { PermissionGate } from '@/Components/app/permission-gate';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useDebounce } from '@/hooks/use-debounce';
 import { Eye, Ban, Search, ShoppingCart } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { useConfirm } from '@/Components/app/confirm-dialog';
 import type { Sale, PaginatedData } from '@/types';
 
 interface Props {
@@ -25,11 +26,12 @@ const STATUS_CFG: Record<string, 'default' | 'secondary' | 'destructive' | 'outl
 };
 
 export default function SalesIndex({ sales, filters }: Props) {
-    const confirm = useConfirm();
     const [search, setSearch] = useState(filters.search ?? '');
     const [dateFrom, setDateFrom] = useState(filters.date_from ?? '');
     const [dateTo, setDateTo] = useState(filters.date_to ?? '');
     const debouncedSearch = useDebounce(search, 300);
+    const [voidSale, setVoidSale] = useState<Sale | null>(null);
+    const { data, setData, post, processing, errors, reset } = useForm({ password: '', reason: '' });
 
     useEffect(() => {
         router.get(
@@ -55,15 +57,16 @@ export default function SalesIndex({ sales, filters }: Props) {
         );
     };
 
-    const handleVoid = async (sale: Sale) => {
-        const ok = await confirm({
-            title: 'Void Sale',
-            description: `Are you sure you want to void sale ${sale.receipt_number}?`,
-            confirmLabel: 'Void',
-            variant: 'destructive',
+    const handleVoid = (sale: Sale) => {
+        setVoidSale(sale);
+        reset();
+    };
+
+    const submitVoid = () => {
+        if (!voidSale) return;
+        post(route('sales.void', voidSale.id), {
+            onSuccess: () => { setVoidSale(null); reset(); },
         });
-        if (!ok) return;
-        router.post(route('sales.void', sale.id), { reason: 'Voided by cashier' });
     };
 
     return (
@@ -154,6 +157,47 @@ export default function SalesIndex({ sales, filters }: Props) {
 
                 <Pagination data={sales} />
             </div>
+
+            {/* Void Dialog */}
+            <Dialog open={!!voidSale} onOpenChange={(open) => { if (!open) { setVoidSale(null); reset(); } }}>
+                <DialogContent className="sm:max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle>Void Sale</DialogTitle>
+                        <DialogDescription>
+                            Void <span className="font-mono font-semibold">{voidSale?.receipt_number}</span>? Enter your password to confirm.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-3">
+                        <div className="space-y-1.5">
+                            <Label htmlFor="void-password">Your Password <span className="text-destructive">*</span></Label>
+                            <Input
+                                id="void-password"
+                                type="password"
+                                value={data.password}
+                                onChange={(e) => setData('password', e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && submitVoid()}
+                                autoFocus
+                            />
+                            {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label htmlFor="void-reason">Reason <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                            <Input
+                                id="void-reason"
+                                value={data.reason}
+                                onChange={(e) => setData('reason', e.target.value)}
+                                placeholder="e.g. Customer request"
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter className="gap-2 sm:gap-0">
+                        <Button variant="outline" onClick={() => { setVoidSale(null); reset(); }}>Cancel</Button>
+                        <Button variant="destructive" onClick={submitVoid} disabled={processing || !data.password}>
+                            {processing ? 'Voiding…' : 'Void Sale'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </AuthenticatedLayout>
     );
 }
