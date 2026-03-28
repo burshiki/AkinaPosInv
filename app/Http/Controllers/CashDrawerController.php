@@ -77,7 +77,6 @@ class CashDrawerController extends Controller
                 + (float) $cashSalesTotal
                 + (float) $cashDebtPayments
                 + (float) $cashReceiptsTotal
-                - (float) $totalChangeGiven
                 + (float) $transfersFromBank
                 - (float) $transfersToBank
                 - (float) $pettyExpenses;
@@ -199,7 +198,6 @@ class CashDrawerController extends Controller
             + (float) $cashSalesTotal
             + (float) $cashDebtPayments
             + (float) $cashReceiptsTotal
-            - (float) $totalChangeGiven
             + (float) $transfersFromBank
             - (float) $transfersToBank
             - (float) $pettyExpenses;
@@ -279,7 +277,6 @@ class CashDrawerController extends Controller
             + (float) $cashSalesTotal
             + (float) $cashDebtPayments
             + (float) $cashReceiptsTotal
-            - (float) $totalChangeGiven
             + (float) $transfersFromBank
             - (float) $transfersToBank
             - (float) $pettyExpenses;
@@ -415,7 +412,6 @@ class CashDrawerController extends Controller
             + (float) $cashSalesTotal
             + (float) $cashDebtPayments
             + (float) $cashReceiptsTotal
-            - (float) $totalChangeGiven
             + (float) $transfersFromBank
             - (float) $transfersToBank
             - (float) $pettyExpenses;

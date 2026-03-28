@@ -343,7 +343,6 @@ class ReportService
             $expectedCash = (float) $drawerSession->opening_balance
                 + (float) $cashSales
                 + (float) $cashDebtPayments
-                - (float) $changeGiven
                 + (float) $transfersIn
                 - (float) $transfersOut
                 - (float) $pettyExpenses;
