@@ -332,6 +332,9 @@ class ReportService
             $pettyExpenses = CashDrawerExpense::where('cash_drawer_session_id', $drawerSession->id)
                 ->sum('amount');
 
+            $cashReceiptsTotal = CashDrawerReceipt::where('cash_drawer_session_id', $drawerSession->id)
+                ->sum('amount');
+
             $cashDebtPayments = DebtPayment::where('cash_drawer_session_id', $drawerSession->id)
                 ->where('payment_method', 'cash')
                 ->sum('amount');
@@ -343,6 +346,7 @@ class ReportService
             $expectedCash = (float) $drawerSession->opening_balance
                 + (float) $cashSales
                 + (float) $cashDebtPayments
+                + (float) $cashReceiptsTotal
                 + (float) $transfersIn
                 - (float) $transfersOut
                 - (float) $pettyExpenses;
@@ -357,6 +361,7 @@ class ReportService
                 'transfers_out'       => (float) $transfersOut,
                 'transfers_in'        => (float) $transfersIn,
                 'petty_cash_expenses'  => round((float) $pettyExpenses, 2),
+                'cash_receipts_total'  => round((float) $cashReceiptsTotal, 2),
                 'cash_debt_payments'   => round((float) $cashDebtPayments, 2),
                 'online_debt_payments' => round((float) $onlineDebtPayments, 2),
                 'expected_cash'        => round($expectedCash, 2),
