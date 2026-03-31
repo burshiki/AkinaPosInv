@@ -69,7 +69,7 @@ export function ReceiptPrinter({ sale, storeName = 'Akina POS' }: ReceiptPrinter
                 <!-- Header -->
                 <div class="header">
                     <div class="store-name">${storeName}</div>
-                    <div class="receipt-title">OFFICIAL RECEIPT</div>
+                    <div class="receipt-title">ORDER SLIP</div>
                 </div>
 
                 <!-- Receipt info + Payment info -->

@@ -330,8 +330,7 @@ export default function RecordShow({ record, bankAccounts, openDrawerSession }: 
                                     <SelectContent>
                                         {bankAccounts.map((a) => (
                                             <SelectItem key={a.id} value={String(a.id)}>
-                                                {a.name}
-                                                {a.account_number ? ` (${a.account_number})` : ''}
+                                                {a.bank_name ? `${a.bank_name} - ${a.name}` : a.name}
                                                 {' — ₱'}{fmt(a.balance)}
                                             </SelectItem>
                                         ))}
