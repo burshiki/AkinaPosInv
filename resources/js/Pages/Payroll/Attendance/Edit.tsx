@@ -16,11 +16,11 @@ interface Props {
 
 interface AttendanceRow {
     employee_id: number;
-    days_present: number;
-    days_absent: number;
+    days_present: number | string;
+    days_absent: number | string;
     days_late: number;
-    overtime_hours: number;
-    hours_late: number;
+    overtime_hours: number | string;
+    hours_late: number | string;
     regular_holidays_not_worked: number;
     regular_holidays_worked: number;
     special_holidays_worked: number;
@@ -128,11 +128,11 @@ export default function AttendanceEdit({ period, employees, existingAttendance, 
                                             {emp.full_name}
                                             <span className="ml-2 text-xs text-muted-foreground">{emp.pay_type === 'monthly' ? 'M' : 'D'}</span>
                                         </td>
-                                        <td className="px-1 py-1"><Input type="text" inputMode="decimal" className="h-8 w-16 text-center" value={data.attendance[idx].days_present} onChange={(e) => updateRow(idx, 'days_present', Number(e.target.value))} /></td>
-                                        <td className="px-1 py-1"><Input type="text" inputMode="decimal" className="h-8 w-16 text-center" value={data.attendance[idx].days_absent} onChange={(e) => updateRow(idx, 'days_absent', Number(e.target.value))} /></td>
+                                        <td className="px-1 py-1"><Input type="text" inputMode="decimal" className="h-8 w-16 text-center" value={data.attendance[idx].days_present} onChange={(e) => updateRow(idx, 'days_present', e.target.value)} /></td>
+                                        <td className="px-1 py-1"><Input type="text" inputMode="decimal" className="h-8 w-16 text-center" value={data.attendance[idx].days_absent} onChange={(e) => updateRow(idx, 'days_absent', e.target.value)} /></td>
                                         <td className="px-1 py-1"><Input type="text" inputMode="numeric" className="h-8 w-16 text-center" value={data.attendance[idx].days_late} onChange={(e) => updateRow(idx, 'days_late', Number(e.target.value))} /></td>
-                                        <td className="px-1 py-1"><Input type="text" inputMode="decimal" className="h-8 w-16 text-center" value={data.attendance[idx].overtime_hours} onChange={(e) => updateRow(idx, 'overtime_hours', Number(e.target.value))} /></td>
-                                        <td className="px-1 py-1"><Input type="text" inputMode="decimal" className="h-8 w-20 text-center" value={data.attendance[idx].hours_late} onChange={(e) => updateRow(idx, 'hours_late', Number(e.target.value))} /></td>
+                                        <td className="px-1 py-1"><Input type="text" inputMode="decimal" className="h-8 w-16 text-center" value={data.attendance[idx].overtime_hours} onChange={(e) => updateRow(idx, 'overtime_hours', e.target.value)} /></td>
+                                        <td className="px-1 py-1"><Input type="text" inputMode="decimal" className="h-8 w-20 text-center" value={data.attendance[idx].hours_late} onChange={(e) => updateRow(idx, 'hours_late', e.target.value)} /></td>
                                         {regularHolidays.length > 0 && <>
                                             <td className="px-1 py-1 bg-red-50/50 dark:bg-red-950/10"><Input type="text" inputMode="numeric" className="h-8 w-14 text-center" value={data.attendance[idx].regular_holidays_not_worked} onChange={(e) => updateRow(idx, 'regular_holidays_not_worked', Number(e.target.value))} /></td>
                                             <td className="px-1 py-1 bg-red-50/50 dark:bg-red-950/10"><Input type="text" inputMode="numeric" className="h-8 w-14 text-center" value={data.attendance[idx].regular_holidays_worked} onChange={(e) => updateRow(idx, 'regular_holidays_worked', Number(e.target.value))} /></td>
