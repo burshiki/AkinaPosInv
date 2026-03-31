@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { ReceiptPrinter } from '@/Components/app/receipt-printer';
 import { SalesCommandPalette } from '@/Components/app/sales-command-palette';
 import { formatCurrency } from '@/lib/utils';
-import { Minus, Plus, ShoppingCart, Trash2, Search, X, UserRound, UserPlus, Lock, Wrench } from 'lucide-react';
+import { Minus, Plus, ShoppingCart, Trash2, Search, X, UserRound, UserPlus, Lock, Wrench, Truck } from 'lucide-react';
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import axios from 'axios';
 import type { Product, Category, BankAccount, Customer, CashDrawerSession, Sale, Quotation, RepairJob } from '@/types';
@@ -66,6 +66,12 @@ export default function SalesCreate({ products, categories, bankAccounts, custom
     const [quickEmail, setQuickEmail] = useState('');
     const [quickLoading, setQuickLoading] = useState(false);
     const [quickErrors, setQuickErrors] = useState<Record<string, string>>({});
+    // Shipping state
+    const [hasShipping, setHasShipping] = useState(false);
+    const [shippingAddress, setShippingAddress] = useState('');
+    const [shippingFee, setShippingFee] = useState<string>('');
+    const [shippingCourier, setShippingCourier] = useState<string>('');
+    const [shippingNotes, setShippingNotes] = useState<string>('');
     const searchRef = useRef<HTMLInputElement>(null);
     const customerDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -364,6 +370,11 @@ export default function SalesCreate({ products, categories, bankAccounts, custom
                 discount_type: discountType,
                 notes: notes || null,
                 repair_job_id: initialRepairJob?.id ?? null,
+                has_shipping: hasShipping || null,
+                shipping_address: hasShipping ? shippingAddress.trim() || null : null,
+                shipping_fee: hasShipping && shippingFee !== '' ? shippingFee : null,
+                shipping_courier: hasShipping && shippingCourier.trim() ? shippingCourier.trim() : null,
+                shipping_notes: hasShipping && shippingNotes.trim() ? shippingNotes.trim() : null,
                 items: [
                     ...cart.map((item) => ({
                         product_id: item.product.id,
@@ -385,6 +396,11 @@ export default function SalesCreate({ products, categories, bankAccounts, custom
                     clearCustomer();
                     setDiscountAmount('0');
                     setNotes('');
+                    setHasShipping(false);
+                    setShippingAddress('');
+                    setShippingFee('');
+                    setShippingCourier('');
+                    setShippingNotes('');
                     setProcessing(false);
                 },
                 onError: () => setProcessing(false),
@@ -630,10 +646,10 @@ export default function SalesCreate({ products, categories, bankAccounts, custom
                                         <div key={item.product.id} className="flex items-center gap-2 rounded-md border p-2">
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-sm font-medium truncate">{item.product.name}</p>
-                                                <p className="text-xs text-muted-foreground">
+                                                <p className="text-xs font-bold">
                                                     {formatCurrency(item.unitPrice ?? item.product.selling_price)}
                                                     {item.unitPrice !== undefined && item.unitPrice !== item.product.selling_price && (
-                                                        <span className="ml-1 line-through opacity-50">{formatCurrency(item.product.selling_price)}</span>
+                                                        <span className="ml-1 line-through opacity-50 font-normal">{formatCurrency(item.product.selling_price)}</span>
                                                     )}
                                                 </p>
                                             </div>
@@ -656,9 +672,6 @@ export default function SalesCreate({ products, categories, bankAccounts, custom
                                                 <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => updateQuantity(item.product.id, item.quantity + 1)}>
                                                     <Plus className="h-3 w-3" />
                                                 </Button>
-                                            </div>
-                                            <div className="text-right min-w-[4.5rem]">
-                                                <p className="text-sm font-bold">{formatCurrency((item.unitPrice ?? item.product.selling_price) * item.quantity)}</p>
                                             </div>
                                             <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeFromCart(item.product.id)}>
                                                 <Trash2 className="h-3 w-3" />
@@ -726,6 +739,62 @@ export default function SalesCreate({ products, categories, bankAccounts, custom
                                     <span>TOTAL:</span>
                                     <span>{formatCurrency(total)}</span>
                                 </div>
+                            </div>
+
+                            {/* Shipping / Delivery */}
+                            <div className="border rounded-md px-3 py-2 space-y-2">
+                                <button
+                                    type="button"
+                                    className="flex w-full items-center justify-between text-sm"
+                                    onClick={() => setHasShipping(!hasShipping)}
+                                >
+                                    <span className="flex items-center gap-1.5 font-medium">
+                                        <Truck className="h-3.5 w-3.5" />
+                                        For Delivery / Shipping
+                                    </span>
+                                    <span className={`h-4 w-7 rounded-full transition-colors ${hasShipping ? 'bg-primary' : 'bg-muted-foreground/30'} relative`}>
+                                        <span className={`absolute top-0.5 h-3 w-3 rounded-full bg-white shadow-sm transition-transform ${hasShipping ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
+                                    </span>
+                                </button>
+                                {hasShipping && (
+                                    <div className="space-y-2 pt-1">
+                                        <div className="space-y-1">
+                                            <Label className="text-xs">Delivery Address *</Label>
+                                            <Input
+                                                value={shippingAddress}
+                                                onChange={(e) => setShippingAddress(e.target.value)}
+                                                placeholder="Full delivery address"
+                                                className="h-8 text-sm"
+                                            />
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <div className="flex-1 space-y-1">
+                                                <Label className="text-xs">Shipping Fee (optional)</Label>
+                                                <Input
+                                                    type="number"
+                                                    min="0"
+                                                    step="0.01"
+                                                    value={shippingFee}
+                                                    onChange={(e) => setShippingFee(e.target.value)}
+                                                    placeholder="TBD"
+                                                    className="h-8 text-sm"
+                                                />
+                                            </div>
+                                            <div className="flex-1 space-y-1">
+                                                <Label className="text-xs">Courier</Label>
+                                                <Input
+                                                    value={shippingCourier}
+                                                    onChange={(e) => setShippingCourier(e.target.value)}
+                                                    placeholder="e.g. J&T, LBC"
+                                                    className="h-8 text-sm"
+                                                />
+                                            </div>
+                                        </div>
+                                        {shippingFee === '' && (
+                                            <p className="text-xs text-muted-foreground">Leave fee blank if not yet confirmed — you can update it later.</p>
+                                        )}
+                                    </div>
+                                )}
                             </div>
 
                             {/* Payment Method */}

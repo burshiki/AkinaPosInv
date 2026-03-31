@@ -143,7 +143,22 @@ export interface Sale {
     notes: string | null;
     items?: SaleItem[];
     returns?: SaleReturn[];
+    shipping?: SaleShipping | null;
     sold_at: string;
+}
+
+export interface SaleShipping {
+    id: number;
+    sale_id: number;
+    shipping_address: string;
+    shipping_fee: string | null;
+    fee_status: 'pending' | 'confirmed' | 'paid';
+    courier: string | null;
+    tracking_number: string | null;
+    notes: string | null;
+    created_at: string;
+    updated_at: string;
+    sale?: Sale;
 }
 
 export interface SaleItem {

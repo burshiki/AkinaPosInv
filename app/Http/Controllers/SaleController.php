@@ -13,6 +13,7 @@ use App\Models\Product;
 use App\Models\Quotation;
 use App\Models\RepairJob;
 use App\Models\Sale;
+use App\Models\SaleShipping;
 use App\Services\SaleService;
 use Inertia\Inertia;
 
@@ -24,7 +25,12 @@ class SaleController extends Controller
 
     public function index()
     {
-        $sales = Sale::with('user')
+        $pendingShippings = SaleShipping::with('sale')
+            ->whereIn('fee_status', ['pending', 'confirmed'])
+            ->latest()
+            ->get();
+
+        $sales = Sale::with(['user', 'shipping'])
             ->when(request('search'), function ($query, $search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('receipt_number', 'like', "%{$search}%")
@@ -39,8 +45,9 @@ class SaleController extends Controller
             ->withQueryString();
 
         return Inertia::render('Sales/Index', [
-            'sales' => $sales,
-            'filters' => request()->only(['search', 'status', 'date_from', 'date_to']),
+            'sales'            => $sales,
+            'filters'          => request()->only(['search', 'status', 'date_from', 'date_to']),
+            'pendingShippings' => $pendingShippings,
         ]);
     }
 
@@ -119,7 +126,7 @@ class SaleController extends Controller
 
     public function show(Sale $sale)
     {
-        $sale->load(['items', 'user', 'bankAccount']);
+        $sale->load(['items', 'user', 'bankAccount', 'shipping']);
 
         return Inertia::render('Sales/Show', [
             'sale' => $sale,

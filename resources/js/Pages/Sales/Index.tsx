@@ -11,13 +11,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { PermissionGate } from '@/Components/app/permission-gate';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useDebounce } from '@/hooks/use-debounce';
-import { Eye, Ban, Search, ShoppingCart } from 'lucide-react';
+import { Eye, Ban, Search, ShoppingCart, Truck, AlertTriangle } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import type { Sale, PaginatedData } from '@/types';
+import type { Sale, PaginatedData, SaleShipping } from '@/types';
 
 interface Props {
     sales: PaginatedData<Sale>;
     filters: { search?: string; date_from?: string; date_to?: string };
+    pendingShippings: SaleShipping[];
 }
 
 const STATUS_CFG: Record<string, 'default' | 'secondary' | 'destructive' | 'outline' | 'success'> = {
@@ -25,7 +26,7 @@ const STATUS_CFG: Record<string, 'default' | 'secondary' | 'destructive' | 'outl
     voided:    'destructive',
 };
 
-export default function SalesIndex({ sales, filters }: Props) {
+export default function SalesIndex({ sales, filters, pendingShippings }: Props) {
     const [search, setSearch] = useState(filters.search ?? '');
     const [dateFrom, setDateFrom] = useState(filters.date_from ?? '');
     const [dateTo, setDateTo] = useState(filters.date_to ?? '');
@@ -81,6 +82,37 @@ export default function SalesIndex({ sales, filters }: Props) {
                         Sales History
                     </h1>
                 </div>
+                {/* Pending Shipping Alert */}
+                {pendingShippings.length > 0 && (
+                    <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-700 p-4 space-y-3">
+                        <div className="flex items-center gap-2 text-amber-800 dark:text-amber-400 font-semibold">
+                            <AlertTriangle className="h-4 w-4 shrink-0" />
+                            {pendingShippings.length} sale{pendingShippings.length > 1 ? 's have' : ' has'} unconfirmed shipping fee{pendingShippings.length > 1 ? 's' : ''}
+                        </div>
+                        <ul className="space-y-1 text-sm text-amber-900 dark:text-amber-300">
+                            {pendingShippings.map((s) => (
+                                <li key={s.id} className="flex items-center gap-2">
+                                    <Truck className="h-3.5 w-3.5 shrink-0" />
+                                    <Link
+                                        href={route('sales.show', s.sale_id)}
+                                        className="font-mono font-semibold hover:underline"
+                                    >
+                                        {s.sale?.receipt_number ?? `Sale #${s.sale_id}`}
+                                    </Link>
+                                    <span className="text-amber-700 dark:text-amber-500">—</span>
+                                    <span className="truncate">{s.shipping_address}</span>
+                                    <Badge
+                                        variant="outline"
+                                        className="ml-auto shrink-0 capitalize border-amber-400 text-amber-800 dark:text-amber-400"
+                                    >
+                                        {s.fee_status}
+                                    </Badge>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
+
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                     <div className="relative flex-1 max-w-sm">
                         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -133,7 +165,19 @@ export default function SalesIndex({ sales, filters }: Props) {
                                         </TableCell>
                                         <TableCell className="text-right font-medium">{formatCurrency(sale.total)}</TableCell>
                                         <TableCell>
-                                            <Badge variant={STATUS_CFG[sale.status] ?? 'secondary'}>{sale.status}</Badge>
+                                            <div className="flex items-center gap-1.5 flex-wrap">
+                                                <Badge variant={STATUS_CFG[sale.status] ?? 'secondary'}>{sale.status}</Badge>
+                                                {sale.shipping && sale.shipping.fee_status !== 'paid' && (
+                                                    <Badge
+                                                        variant="outline"
+                                                        className="border-amber-400 text-amber-700 dark:text-amber-400 gap-1"
+                                                        title={`Shipping fee ${sale.shipping.fee_status}`}
+                                                    >
+                                                        <Truck className="h-3 w-3" />
+                                                        {sale.shipping.fee_status}
+                                                    </Badge>
+                                                )}
+                                            </div>
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex items-center justify-end gap-1">

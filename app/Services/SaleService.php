@@ -6,6 +6,7 @@ use App\Exceptions\InsufficientStockException;
 use App\Jobs\LowStockAlertJob;
 use App\Models\BankAccount;
 use App\Models\CashDrawerSession;
+use App\Models\SaleShipping;
 use App\Models\CustomerDebt;
 use App\Models\Customer;
 use App\Models\InventoryLot;
@@ -228,6 +229,21 @@ class SaleService
                         'status'     => 'claimed',
                         'claimed_at' => now(),
                     ]);
+            }
+
+            // Create shipping record if this sale is for delivery
+            if (!empty($validated['has_shipping'])) {
+                $fee = (isset($validated['shipping_fee']) && $validated['shipping_fee'] !== '' && $validated['shipping_fee'] !== null)
+                    ? (float) $validated['shipping_fee']
+                    : null;
+                SaleShipping::create([
+                    'sale_id'          => $sale->id,
+                    'shipping_address' => $validated['shipping_address'],
+                    'shipping_fee'     => $fee,
+                    'fee_status'       => $fee !== null ? 'confirmed' : 'pending',
+                    'courier'          => $validated['shipping_courier'] ?? null,
+                    'notes'            => $validated['shipping_notes'] ?? null,
+                ]);
             }
 
             return $sale->load('items');

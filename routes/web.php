@@ -17,6 +17,7 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\CashDrawerController;
 use App\Http\Controllers\SaleReturnController;
+use App\Http\Controllers\SaleShippingController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WarrantyController;
 use App\Http\Controllers\WarrantyClaimController;
@@ -126,6 +127,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->name('sales.return.store');
         Route::get('returns/{saleReturn}', [SaleReturnController::class, 'show'])
             ->name('returns.show');
+
+        // Shipping
+        Route::post('sale-shippings/{shipping}/confirm-fee', [SaleShippingController::class, 'confirmFee'])
+            ->name('sale-shippings.confirm-fee');
+        Route::post('sale-shippings/{shipping}/mark-paid', [SaleShippingController::class, 'markPaid'])
+            ->name('sale-shippings.mark-paid');
     });
 
     // Banking module

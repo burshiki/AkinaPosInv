@@ -79,4 +79,9 @@ class Sale extends Model
     {
         return $this->hasMany(SaleReturn::class);
     }
+
+    public function shipping()
+    {
+        return $this->hasOne(SaleShipping::class);
+    }
 }
