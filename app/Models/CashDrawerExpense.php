@@ -11,6 +11,7 @@ class CashDrawerExpense extends Model
         'cash_drawer_session_id',
         'performed_by',
         'category',
+        'payment_method',
         'amount',
         'description',
     ];

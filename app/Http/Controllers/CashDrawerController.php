@@ -60,6 +60,11 @@ class CashDrawerController extends Controller
                 ->sum('amount');
 
             $pettyExpenses = CashDrawerExpense::where('cash_drawer_session_id', $openSession->id)
+                ->whereNull('payment_method')
+                ->sum('amount');
+
+            $bankExpenses = CashDrawerExpense::where('cash_drawer_session_id', $openSession->id)
+                ->whereNotNull('payment_method')
                 ->sum('amount');
 
             $cashReceiptsTotal = CashDrawerReceipt::where('cash_drawer_session_id', $openSession->id)
@@ -88,6 +93,7 @@ class CashDrawerController extends Controller
                 'transfers_to_bank'          => round((float) $transfersToBank, 2),
                 'transfers_from_bank'        => round((float) $transfersFromBank, 2),
                 'petty_cash_expenses'        => round((float) $pettyExpenses, 2),
+                'bank_expense_total'         => round((float) $bankExpenses, 2),
                 'cash_receipts_total'        => round((float) $cashReceiptsTotal, 2),
                 'cash_debt_payments_total'   => round((float) $cashDebtPayments, 2),
                 'online_debt_payments_total' => round((float) $onlineDebtPayments, 2),
@@ -181,6 +187,11 @@ class CashDrawerController extends Controller
             ->sum('amount');
 
         $pettyExpenses = CashDrawerExpense::where('cash_drawer_session_id', $session->id)
+            ->whereNull('payment_method')
+            ->sum('amount');
+
+        $bankExpenses = CashDrawerExpense::where('cash_drawer_session_id', $session->id)
+            ->whereNotNull('payment_method')
             ->sum('amount');
 
         $cashReceiptsTotal = CashDrawerReceipt::where('cash_drawer_session_id', $session->id)
@@ -211,6 +222,7 @@ class CashDrawerController extends Controller
                 'transfers_to_bank'          => round((float) $transfersToBank, 2),
                 'transfers_from_bank'        => round((float) $transfersFromBank, 2),
                 'petty_cash_expenses'        => round((float) $pettyExpenses, 2),
+                'bank_expense_total'         => round((float) $bankExpenses, 2),
                 'cash_receipts_total'        => round((float) $cashReceiptsTotal, 2),
                 'cash_debt_payments_total'   => round((float) $cashDebtPayments, 2),
                 'online_debt_payments_total' => round((float) $onlineDebtPayments, 2),
@@ -260,6 +272,7 @@ class CashDrawerController extends Controller
             ->sum('amount');
 
         $pettyExpenses = CashDrawerExpense::where('cash_drawer_session_id', $session->id)
+            ->whereNull('payment_method')
             ->sum('amount');
 
         $cashReceiptsTotal = CashDrawerReceipt::where('cash_drawer_session_id', $session->id)
@@ -403,7 +416,8 @@ class CashDrawerController extends Controller
         $totalSalesAll      = $sales->sum('total');
         $transfersToBank    = $transfers->where('direction', 'drawer_to_bank')->sum('amount');
         $transfersFromBank  = $transfers->where('direction', 'bank_to_drawer')->sum('amount');
-        $pettyExpenses      = $expenses->sum('amount');
+        $pettyExpenses      = $expenses->whereNull('payment_method')->sum('amount');
+        $bankExpenses       = $expenses->whereNotNull('payment_method')->sum('amount');
         $cashReceiptsTotal  = $receipts->sum('amount');
         $cashDebtPayments   = $debtPayments->where('payment_method', 'cash')->sum('amount');
         $onlineDebtPayments = $debtPayments->where('payment_method', 'online')->sum('amount');
@@ -430,6 +444,7 @@ class CashDrawerController extends Controller
                 'transfers_to_bank'          => round((float) $transfersToBank, 2),
                 'transfers_from_bank'        => round((float) $transfersFromBank, 2),
                 'petty_cash_total'           => round((float) $pettyExpenses, 2),
+                'bank_expense_total'         => round((float) $bankExpenses, 2),
                 'cash_receipts_total'        => round((float) $cashReceiptsTotal, 2),
                 'cash_debt_payments_total'   => round((float) $cashDebtPayments, 2),
                 'online_debt_payments_total' => round((float) $onlineDebtPayments, 2),

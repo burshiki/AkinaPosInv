@@ -303,7 +303,8 @@ export interface CashDrawerExpense {
     cash_drawer_session_id: number;
     performed_by: number;
     performer?: User;
-    category: 'food' | 'transport' | 'supplies' | 'maintenance' | 'utilities' | 'other';
+    category: 'food' | 'transport' | 'supplies' | 'maintenance' | 'utilities' | 'other' | 'payroll';
+    payment_method: string | null;
     amount: number;
     description: string;
     created_at: string;
@@ -494,6 +495,7 @@ export interface ZReport {
         transfers_out: number;
         transfers_in: number;
         petty_cash_expenses: number;
+        bank_expenses: number;
         cash_debt_payments: number;
         online_debt_payments: number;
         expected_cash: number;
@@ -505,7 +507,7 @@ export interface ZReport {
     account_movements: Array<{
         id: number;
         name: string;
-        type: string;
+        bank_name: string | null;
         inflows: number;
         outflows: number;
         balance: number;

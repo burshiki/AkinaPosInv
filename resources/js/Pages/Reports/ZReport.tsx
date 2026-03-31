@@ -212,7 +212,10 @@ export default function ZReportPage({ report, filters }: Props) {
                             <div className="flex justify-between text-muted-foreground"><span>Transfers Out</span><span>({formatCurrency(report.cash_drawer.transfers_out)})</span></div>
                             <div className="flex justify-between text-muted-foreground"><span>Transfers In</span><span>+{formatCurrency(report.cash_drawer.transfers_in)}</span></div>
                             {report.cash_drawer.petty_cash_expenses > 0 && (
-                                <div className="flex justify-between text-muted-foreground"><span>Petty Cash Expenses</span><span>({formatCurrency(report.cash_drawer.petty_cash_expenses)})</span></div>
+                                <div className="flex justify-between text-muted-foreground"><span>Petty Cash Expenses (Cash)</span><span>({formatCurrency(report.cash_drawer.petty_cash_expenses)})</span></div>
+                            )}
+                            {report.cash_drawer.bank_expenses > 0 && (
+                                <div className="flex justify-between text-muted-foreground"><span>Petty Cash Expenses (Bank/GCash)</span><span className="text-blue-600">{formatCurrency(report.cash_drawer.bank_expenses)} (no cash impact)</span></div>
                             )}
                             {report.cash_drawer.cash_debt_payments > 0 && (
                                 <div className="flex justify-between text-muted-foreground"><span>Debt Payments (Cash)</span><span>+{formatCurrency(report.cash_drawer.cash_debt_payments)}</span></div>
@@ -252,7 +255,6 @@ export default function ZReportPage({ report, filters }: Props) {
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Account</TableHead>
-                                    <TableHead>Type</TableHead>
                                     <TableHead className="text-right">Inflows</TableHead>
                                     <TableHead className="text-right">Outflows</TableHead>
                                     <TableHead className="text-right">Balance</TableHead>
@@ -261,8 +263,9 @@ export default function ZReportPage({ report, filters }: Props) {
                             <TableBody>
                                 {report.account_movements.map(a => (
                                     <TableRow key={a.id}>
-                                        <TableCell className="font-medium">{a.name}</TableCell>
-                                        <TableCell className="capitalize">{a.type}</TableCell>
+                                        <TableCell className="font-medium">
+                                            {a.bank_name ? `${a.bank_name} - ${a.name}` : a.name}
+                                        </TableCell>
                                         <TableCell className="text-right text-green-600">{formatCurrency(a.inflows)}</TableCell>
                                         <TableCell className="text-right text-red-600">{formatCurrency(a.outflows)}</TableCell>
                                         <TableCell className="text-right font-medium">{formatCurrency(a.balance)}</TableCell>

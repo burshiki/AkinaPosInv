@@ -20,6 +20,9 @@ interface Props {
         total_change_given: number;
         transfers_to_bank: number;
         transfers_from_bank: number;
+        petty_cash_expenses: number;
+        bank_expense_total: number;
+        cash_receipts_total: number;
         cash_debt_payments_total: number;
         online_debt_payments_total: number;
         expected_cash: number;
@@ -131,6 +134,33 @@ export default function CashDrawerClose({ session, summary }: Props) {
                                     <p className="text-lg font-bold text-blue-600">
                                         <ArrowUp className="inline h-4 w-4 mr-1" />
                                         {formatCurrency(summary.online_debt_payments_total)}
+                                    </p>
+                                </div>
+                            )}
+                            {summary.cash_receipts_total > 0 && (
+                                <div className="rounded-md border p-3 text-center">
+                                    <p className="text-xs text-muted-foreground uppercase">Cash Receipts (In)</p>
+                                    <p className="text-lg font-bold text-teal-600">
+                                        <ArrowUp className="inline h-4 w-4 mr-1" />
+                                        {formatCurrency(summary.cash_receipts_total)}
+                                    </p>
+                                </div>
+                            )}
+                            {summary.petty_cash_expenses > 0 && (
+                                <div className="rounded-md border p-3 text-center">
+                                    <p className="text-xs text-muted-foreground uppercase">Petty Cash Expenses</p>
+                                    <p className="text-lg font-bold text-red-600">
+                                        <ArrowDown className="inline h-4 w-4 mr-1" />
+                                        {formatCurrency(summary.petty_cash_expenses)}
+                                    </p>
+                                </div>
+                            )}
+                            {summary.bank_expense_total > 0 && (
+                                <div className="rounded-md border p-3 text-center">
+                                    <p className="text-xs text-muted-foreground uppercase">Bank/GCash Expenses</p>
+                                    <p className="text-lg font-bold text-blue-600">
+                                        {formatCurrency(summary.bank_expense_total)}
+                                        <span className="ml-1 text-xs font-normal text-muted-foreground">(no cash impact)</span>
                                     </p>
                                 </div>
                             )}

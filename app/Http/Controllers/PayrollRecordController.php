@@ -71,6 +71,19 @@ class PayrollRecordController extends Controller
                     $payrollRecord->id,
                     $request->user()->id
                 );
+
+                // Also record in the current open cash drawer session as a non-cash expense (informational)
+                $openSession = CashDrawerSession::where('status', 'open')->latest()->first();
+                if ($openSession) {
+                    CashDrawerExpense::create([
+                        'cash_drawer_session_id' => $openSession->id,
+                        'performed_by'           => $request->user()->id,
+                        'category'               => 'payroll',
+                        'payment_method'         => $bankAccount->bank_name ?? $bankAccount->name,
+                        'amount'                 => $payrollRecord->net_pay,
+                        'description'            => $description,
+                    ]);
+                }
             }
 
             $payrollRecord->update([

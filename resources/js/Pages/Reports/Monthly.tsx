@@ -42,6 +42,12 @@ interface AccountBreakdown {
     total: number;
 }
 
+interface BankOutflowCategory {
+    category: string;
+    total: number;
+    entries: { label: string; total: number }[];
+}
+
 interface ByProduct {
     id: number | null;
     name: string;
@@ -122,7 +128,7 @@ interface Report {
     expenses: {
         bills_paid: { by_category: CategoryBreakdown[]; total: number };
         cash_expenses: { by_category: CategoryBreakdown[]; total: number };
-        bank_outflows: { by_account: AccountBreakdown[]; total: number };
+        bank_outflows: { by_category: BankOutflowCategory[]; total: number };
         internal_use_cost: number;
         total: number;
     };
@@ -645,8 +651,16 @@ export default function MonthlyReport({ report, filters }: Props) {
                                         {report.expenses.bank_outflows.total > 0 && (
                                             <div>
                                                 <LineRow label="Bank Outflows" amount={report.expenses.bank_outflows.total} />
-                                                {report.expenses.bank_outflows.by_account.map((a) => (
-                                                    <LineRow key={a.account_name} label={a.account_name} amount={a.total} sub />
+                                                {report.expenses.bank_outflows.by_category.map((cat) => (
+                                                    <div key={cat.category}>
+                                                        <LineRow label={cat.category} amount={cat.total} sub />
+                                                        {cat.entries.map((e) => (
+                                                            <div key={e.label} className="flex justify-between py-1 text-sm pl-8">
+                                                                <span className="text-muted-foreground">{e.label}</span>
+                                                                <span className="font-mono font-medium">{formatCurrency(e.total)}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
                                                 ))}
                                             </div>
                                         )}

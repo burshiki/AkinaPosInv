@@ -21,6 +21,7 @@ interface Summary {
     transfers_to_bank: number;
     transfers_from_bank: number;
     petty_cash_total: number;
+    bank_expense_total: number;
     cash_receipts_total: number;
     cash_debt_payments_total: number;
     online_debt_payments_total: number;
@@ -315,9 +316,14 @@ export default function CashDrawerShow({ session, sales, transfers, expenses, re
                         <div className="flex items-center justify-between">
                             <CardTitle>Petty Cash Expenses ({expenses.length})</CardTitle>
                             {expenses.length > 0 && (
-                                <span className="text-sm font-semibold text-red-600">
-                                    Total: {formatCurrency(summary.petty_cash_total)}
-                                </span>
+                                <div className="flex gap-3 text-sm font-semibold">
+                                    {summary.petty_cash_total > 0 && (
+                                        <span className="text-red-600">Cash: {formatCurrency(summary.petty_cash_total)}</span>
+                                    )}
+                                    {summary.bank_expense_total > 0 && (
+                                        <span className="text-blue-600">Bank/GCash: {formatCurrency(summary.bank_expense_total)}</span>
+                                    )}
+                                </div>
                             )}
                         </div>
                     </CardHeader>
@@ -327,6 +333,7 @@ export default function CashDrawerShow({ session, sales, transfers, expenses, re
                                 <TableRow>
                                     <TableHead>Time</TableHead>
                                     <TableHead>Category</TableHead>
+                                    <TableHead>Via</TableHead>
                                     <TableHead>Description</TableHead>
                                     <TableHead>By</TableHead>
                                     <TableHead className="text-right">Amount</TableHead>
@@ -335,7 +342,7 @@ export default function CashDrawerShow({ session, sales, transfers, expenses, re
                             <TableBody>
                                 {expenses.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
+                                        <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
                                             No petty cash expenses recorded
                                         </TableCell>
                                     </TableRow>
@@ -346,12 +353,20 @@ export default function CashDrawerShow({ session, sales, transfers, expenses, re
                                             <TableCell>
                                                 <Badge variant="outline" className="capitalize">{exp.category}</Badge>
                                             </TableCell>
+                                            <TableCell className="text-sm">
+                                                {exp.payment_method ? (
+                                                    <span className="text-blue-600 font-medium">{exp.payment_method}</span>
+                                                ) : (
+                                                    <span className="text-muted-foreground">Cash</span>
+                                                )}
+                                            </TableCell>
                                             <TableCell className="text-sm">{exp.description}</TableCell>
                                             <TableCell className="text-sm text-muted-foreground">
                                                 {exp.performer?.name ?? '—'}
                                             </TableCell>
-                                            <TableCell className="text-right font-medium text-red-600">
+                                            <TableCell className={`text-right font-medium ${exp.payment_method ? 'text-blue-600' : 'text-red-600'}`}>
                                                 − {formatCurrency(exp.amount)}
+                                                {exp.payment_method && <span className="ml-1 text-xs text-muted-foreground">(no cash impact)</span>}
                                             </TableCell>
                                         </TableRow>
                                     ))
@@ -642,6 +657,7 @@ export default function CashDrawerShow({ session, sales, transfers, expenses, re
                                 <tr className="border-b bg-gray-50">
                                     <th className="py-1 text-left font-semibold">Time</th>
                                     <th className="py-1 text-left font-semibold">Category</th>
+                                    <th className="py-1 text-left font-semibold">Via</th>
                                     <th className="py-1 text-left font-semibold">Description</th>
                                     <th className="py-1 text-left font-semibold">By</th>
                                     <th className="py-1 text-right font-semibold">Amount</th>
@@ -652,19 +668,38 @@ export default function CashDrawerShow({ session, sales, transfers, expenses, re
                                     <tr key={exp.id} className="border-b">
                                         <td className="py-1">{fmt(exp.created_at)}</td>
                                         <td className="py-1 capitalize">{exp.category}</td>
+                                        <td className="py-1">{exp.payment_method ?? 'Cash'}</td>
                                         <td className="py-1">{exp.description}</td>
                                         <td className="py-1 text-gray-500">{exp.performer?.name ?? '—'}</td>
-                                        <td className="py-1 text-right">{formatCurrency(exp.amount)}</td>
+                                        <td className="py-1 text-right">
+                                            {formatCurrency(exp.amount)}
+                                            {exp.payment_method && ' *'}
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
                             <tfoot>
+                                {summary.petty_cash_total > 0 && (
+                                    <tr className="border-t">
+                                        <td colSpan={5} className="py-1">Cash Expenses</td>
+                                        <td className="py-1 text-right">{formatCurrency(summary.petty_cash_total)}</td>
+                                    </tr>
+                                )}
+                                {summary.bank_expense_total > 0 && (
+                                    <tr className="border-t">
+                                        <td colSpan={5} className="py-1">Bank/GCash Expenses *</td>
+                                        <td className="py-1 text-right">{formatCurrency(summary.bank_expense_total)}</td>
+                                    </tr>
+                                )}
                                 <tr className="border-t font-bold">
-                                    <td colSpan={4} className="py-1.5">Total Expenses</td>
+                                    <td colSpan={5} className="py-1.5">Total Cash Expenses</td>
                                     <td className="py-1.5 text-right">{formatCurrency(summary.petty_cash_total)}</td>
                                 </tr>
                             </tfoot>
                         </table>
+                        {summary.bank_expense_total > 0 && (
+                            <p className="text-xs text-gray-400 mb-4">* Bank/GCash expenses do not affect cash drawer balance.</p>
+                        )}
                     </>
                 )}
 

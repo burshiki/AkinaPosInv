@@ -330,6 +330,11 @@ class ReportService
                 ->sum('amount');
 
             $pettyExpenses = CashDrawerExpense::where('cash_drawer_session_id', $drawerSession->id)
+                ->whereNull('payment_method')
+                ->sum('amount');
+
+            $bankExpenses = CashDrawerExpense::where('cash_drawer_session_id', $drawerSession->id)
+                ->whereNotNull('payment_method')
                 ->sum('amount');
 
             $cashReceiptsTotal = CashDrawerReceipt::where('cash_drawer_session_id', $drawerSession->id)
@@ -361,6 +366,7 @@ class ReportService
                 'transfers_out'       => (float) $transfersOut,
                 'transfers_in'        => (float) $transfersIn,
                 'petty_cash_expenses'  => round((float) $pettyExpenses, 2),
+                'bank_expenses'        => round((float) $bankExpenses, 2),
                 'cash_receipts_total'  => round((float) $cashReceiptsTotal, 2),
                 'cash_debt_payments'   => round((float) $cashDebtPayments, 2),
                 'online_debt_payments' => round((float) $onlineDebtPayments, 2),
@@ -381,12 +387,12 @@ class ReportService
                 ->whereBetween('transacted_at', [$dayStart, $dayEnd]);
 
             return [
-                'id'      => $account->id,
-                'name'    => $account->name,
-                'type'    => $account->type,
-                'inflows' => (float) (clone $entries)->where('type', 'in')->sum('amount'),
-                'outflows' => (float) (clone $entries)->where('type', 'out')->sum('amount'),
-                'balance' => (float) $account->balance,
+                'id'        => $account->id,
+                'name'      => $account->name,
+                'bank_name' => $account->bank_name,
+                'inflows'   => (float) (clone $entries)->where('type', 'in')->sum('amount'),
+                'outflows'  => (float) (clone $entries)->where('type', 'out')->sum('amount'),
+                'balance'   => (float) $account->balance,
             ];
         })->values()->toArray();
 
@@ -574,7 +580,9 @@ class ReportService
                 'total'    => (float) $g->sum('amount'),
             ])->values()->toArray();
 
-        $expenseRows = CashDrawerExpense::whereBetween('created_at', [$periodStart, $periodEnd])->get();
+        $expenseRows = CashDrawerExpense::whereBetween('created_at', [$periodStart, $periodEnd])
+            ->whereNull('payment_method')
+            ->get();
         $cashExpensesByCategory = $expenseRows->groupBy('category')
             ->map(fn ($g, $cat) => [
                 'category' => $cat ?: 'Uncategorized',
@@ -585,10 +593,18 @@ class ReportService
             ->where('type', 'out')
             ->with('bankAccount')
             ->get();
-        $bankOutflowsByAccount = $bankOutflowRows->groupBy('bank_account_id')
-            ->map(fn ($g) => [
-                'account_name' => $g->first()->bankAccount?->name ?? 'Unknown',
-                'total'        => (float) $g->sum('amount'),
+        $bankOutflowsByCategory = $bankOutflowRows->groupBy('category')
+            ->map(fn ($g, $cat) => [
+                'category' => $cat ?: 'Other',
+                'total'    => (float) $g->sum('amount'),
+                'entries'  => $g->groupBy('bank_account_id')
+                    ->map(fn ($eg) => [
+                        'label' => ($eg->first()->bankAccount?->bank_name
+                            ? $eg->first()->bankAccount->bank_name . ' – ' . $eg->first()->bankAccount->name
+                            : ($eg->first()->bankAccount?->name ?? 'Unknown')
+                        ),
+                        'total' => (float) $eg->sum('amount'),
+                    ])->values()->toArray(),
             ])->values()->toArray();
 
         $totalExpenses = (float) $billPayments->sum('amount')
@@ -654,8 +670,8 @@ class ReportService
                     'total'       => (float) $expenseRows->sum('amount'),
                 ],
                 'bank_outflows' => [
-                    'by_account' => $bankOutflowsByAccount,
-                    'total'      => (float) $bankOutflowRows->sum('amount'),
+                    'by_category' => $bankOutflowsByCategory,
+                    'total'       => (float) $bankOutflowRows->sum('amount'),
                 ],
                 'internal_use_cost' => $internalUseCost,
                 'total'             => $totalExpenses,
