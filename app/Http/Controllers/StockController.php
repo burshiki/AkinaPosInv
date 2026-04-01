@@ -7,6 +7,8 @@ use App\Models\CashDrawerSession;
 use App\Models\InventorySession;
 use App\Models\Product;
 use App\Models\StockAdjustment;
+use App\Models\Warranty;
+use App\Models\WarrantyClaim;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -103,9 +105,15 @@ class StockController extends Controller
             'adjustment_type' => ['required', 'in:add,subtract,set'],
             'quantity'        => ['required', 'integer', 'min:0'],
             'reason'          => ['nullable', 'string', 'max:500'],
+            'warranty_return' => ['nullable', 'boolean'],
         ]);
 
-        DB::transaction(function () use ($validated, $product) {
+        $warrantyReturn = ($validated['adjustment_type'] === 'subtract')
+            && !empty($validated['warranty_return']);
+
+        $adjustment = null;
+
+        DB::transaction(function () use ($validated, $product, $warrantyReturn, &$adjustment) {
             $before = $product->stock_quantity;
 
             $after = match ($validated['adjustment_type']) {
@@ -118,19 +126,64 @@ class StockController extends Controller
 
             $product->update(['stock_quantity' => $after]);
 
-            StockAdjustment::create([
+            $adjustment = StockAdjustment::create([
                 'product_id'            => $product->id,
                 'user_id'               => auth()->id(),
                 'inventory_session_id'  => null,
-                'type'                  => 'manual',
+                'type'                  => $warrantyReturn ? 'warranty_return' : 'manual',
                 'before_qty'            => $before,
                 'change_qty'            => $change,
                 'after_qty'             => $after,
                 'reason'                => $validated['reason'] ?? null,
             ]);
+
+            if ($warrantyReturn) {
+                $receiptNumber = 'WR-' . now()->format('Ymd') . '-' . $adjustment->id;
+
+                $warranty = Warranty::create([
+                    'sale_id'          => null,
+                    'sale_item_id'     => null,
+                    'product_id'       => $product->id,
+                    'receipt_number'   => $receiptNumber,
+                    'customer_name'    => null,
+                    'warranty_months'  => 0,
+                    'serial_number'    => null,
+                    'activated_at'     => now(),
+                    'expires_at'       => null,
+                    'status'           => 'active',
+                    'notes'            => sprintf(
+                        'Stock warranty return — %s (qty: %d) — Adj #%d',
+                        $product->name,
+                        abs($validated['quantity']),
+                        $adjustment->id,
+                    ),
+                ]);
+
+                $claimNumber = sprintf(
+                    'CLM-%s-%04d',
+                    now()->format('Ymd'),
+                    WarrantyClaim::whereDate('created_at', today())->count() + 1
+                );
+
+                WarrantyClaim::create([
+                    'warranty_id'       => $warranty->id,
+                    'claim_number'      => $claimNumber,
+                    'issue_description' => sprintf(
+                        'Stock warranty return — %s (qty: %d) — Adj #%d',
+                        $product->name,
+                        abs($validated['quantity']),
+                        $adjustment->id,
+                    ),
+                    'status'            => 'confirmed',
+                ]);
+            }
         });
 
-        return back()->with('success', "Stock for {$product->name} updated to {$product->fresh()->stock_quantity}.");
+        $suffix = $warrantyReturn
+            ? ' Warranty claim created — view it in the Warranty module.'
+            : '';
+
+        return back()->with('success', "Stock for {$product->name} updated to {$product->fresh()->stock_quantity}.{$suffix}");
     }
 
     public function internalUse(Request $request, Product $product)

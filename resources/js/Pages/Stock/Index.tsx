@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/Components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/Components/ui/dialog';
 import { Textarea } from '@/Components/ui/textarea';
+import { Checkbox } from '@/Components/ui/checkbox';
 import { Pagination } from '@/Components/ui/pagination';
 import { PermissionGate } from '@/Components/app/permission-gate';
 import { usePermission } from '@/hooks/use-permissions';
@@ -39,7 +40,7 @@ export default function StockIndex({ products, categories, activeSession, filter
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
     // Forms
-    const adjustForm   = useForm({ adjustment_type: 'add', quantity: '', reason: '' });
+    const adjustForm   = useForm({ adjustment_type: 'add', quantity: '', reason: '', warranty_return: false });
     const internalForm = useForm({ quantity: '', purpose: '' });
     const startForm    = useForm({ notes: '' });
 
@@ -61,7 +62,7 @@ export default function StockIndex({ products, categories, activeSession, filter
 
     function openAdjust(product: Product) {
         setSelectedProduct(product);
-        adjustForm.setData({ adjustment_type: 'add', quantity: '', reason: '' });
+        adjustForm.setData({ adjustment_type: 'add', quantity: '', reason: '', warranty_return: false });
         adjustForm.clearErrors();
         setAdjustOpen(true);
     }
@@ -333,7 +334,10 @@ export default function StockIndex({ products, categories, activeSession, filter
                                 <Label>Adjustment Type</Label>
                                 <Select
                                     value={adjustForm.data.adjustment_type}
-                                    onValueChange={(v) => adjustForm.setData('adjustment_type', v)}
+                                    onValueChange={(v) => {
+                                        adjustForm.setData('adjustment_type', v);
+                                        if (v !== 'subtract') adjustForm.setData('warranty_return', false);
+                                    }}
                                 >
                                     <SelectTrigger>
                                         <SelectValue />
@@ -375,6 +379,21 @@ export default function StockIndex({ products, categories, activeSession, filter
                                     placeholder="Damaged goods, received shipment, correction…"
                                 />
                             </div>
+
+                            {adjustForm.data.adjustment_type === 'subtract' && (
+                                <div className="flex items-center gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 dark:bg-amber-900/20">
+                                    <Checkbox
+                                        id="warranty_return"
+                                        checked={adjustForm.data.warranty_return as boolean}
+                                        onCheckedChange={(checked) =>
+                                            adjustForm.setData('warranty_return', checked === true)
+                                        }
+                                    />
+                                    <Label htmlFor="warranty_return" className="cursor-pointer text-amber-800 dark:text-amber-300">
+                                        For warranty — send to supplier
+                                    </Label>
+                                </div>
+                            )}
 
                             <DialogFooter>
                                 <Button type="button" variant="outline" onClick={() => setAdjustOpen(false)}>
