@@ -184,6 +184,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
             [BankAccountLedgerController::class, 'store'])
             ->name('bank-accounts.ledger.store')
             ->middleware('permission:banking.manage');
+        Route::put('bank-accounts/{bankAccount}/ledger/{ledger}',
+            [BankAccountLedgerController::class, 'update'])
+            ->name('bank-accounts.ledger.update')
+            ->middleware('permission:banking.manage');
     });
 
     // Debts module

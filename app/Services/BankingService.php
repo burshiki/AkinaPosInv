@@ -101,6 +101,48 @@ class BankingService
         });
     }
 
+    public function updateManualEntry(
+        BankAccountLedger $entry,
+        string $type,
+        float $amount,
+        string $description,
+        string $category
+    ): BankAccountLedger {
+        if ($entry->reference_type !== null) {
+            throw new \RuntimeException('Only manual ledger entries can be edited.');
+        }
+
+        return DB::transaction(function () use ($entry, $type, $amount, $description, $category) {
+            $oldEffect = $entry->type === 'in' ? (float) $entry->amount : -(float) $entry->amount;
+            $newEffect = $type === 'in' ? $amount : -$amount;
+            $delta = $newEffect - $oldEffect;
+
+            $entry->update([
+                'type'        => $type,
+                'amount'      => $amount,
+                'description' => $description,
+                'category'    => $category,
+            ]);
+
+            // Cascade running_balance forward from this entry (inclusive)
+            BankAccountLedger::where('bank_account_id', $entry->bank_account_id)
+                ->where(function ($q) use ($entry) {
+                    $q->where('transacted_at', '>', $entry->transacted_at)
+                        ->orWhere(function ($q2) use ($entry) {
+                            $q2->where('transacted_at', $entry->transacted_at)
+                                ->where('id', '>=', $entry->id);
+                        });
+                })
+                ->increment('running_balance', $delta);
+
+            DB::table('bank_accounts')
+                ->where('id', $entry->bank_account_id)
+                ->increment('balance', $delta);
+
+            return $entry->fresh();
+        });
+    }
+
     public function getAccountSummary(BankAccount $account, ?string $from = null, ?string $to = null): array
     {
         $query = $account->ledgerEntries();

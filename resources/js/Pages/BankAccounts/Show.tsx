@@ -12,7 +12,7 @@ import { Textarea } from '@/Components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
 import { PermissionGate } from '@/Components/app/permission-gate';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import { ArrowLeft, ArrowDownCircle, ArrowUpCircle, Plus } from 'lucide-react';
+import { ArrowLeft, ArrowDownCircle, ArrowUpCircle, Plus, Pencil } from 'lucide-react';
 import { useState } from 'react';
 import type { BankAccount, BankAccountLedgerEntry, PaginatedData } from '@/types';
 
@@ -32,8 +32,17 @@ const CATEGORIES = [
 
 export default function BankAccountsShow({ bankAccount, ledgerEntries }: Props) {
     const [recordOpen, setRecordOpen] = useState(false);
+    const [editOpen, setEditOpen] = useState(false);
+    const [editingEntry, setEditingEntry] = useState<BankAccountLedgerEntry | null>(null);
 
     const form = useForm({
+        type: 'in' as 'in' | 'out',
+        amount: '',
+        description: '',
+        category: 'other',
+    });
+
+    const editForm = useForm({
         type: 'in' as 'in' | 'out',
         amount: '',
         description: '',
@@ -46,10 +55,30 @@ export default function BankAccountsShow({ bankAccount, ledgerEntries }: Props) 
         setRecordOpen(true);
     };
 
+    const openEdit = (entry: BankAccountLedgerEntry) => {
+        setEditingEntry(entry);
+        editForm.setData({
+            type: entry.type,
+            amount: String(entry.amount),
+            description: entry.description,
+            category: entry.category,
+        });
+        editForm.clearErrors();
+        setEditOpen(true);
+    };
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         form.post(route('bank-accounts.ledger.store', bankAccount.id), {
             onSuccess: () => setRecordOpen(false),
+        });
+    };
+
+    const handleEditSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingEntry) return;
+        editForm.put(route('bank-accounts.ledger.update', { bankAccount: bankAccount.id, ledger: editingEntry.id }), {
+            onSuccess: () => setEditOpen(false),
         });
     };
 
@@ -97,12 +126,13 @@ export default function BankAccountsShow({ bankAccount, ledgerEntries }: Props) 
                                 <TableHead className="text-right">Amount</TableHead>
                                 <TableHead className="text-right">Balance</TableHead>
                                 <TableHead>By</TableHead>
+                                <TableHead />
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {ledgerEntries.data.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                                    <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                                         No ledger entries yet
                                     </TableCell>
                                 </TableRow>
@@ -130,6 +160,20 @@ export default function BankAccountsShow({ bankAccount, ledgerEntries }: Props) 
                                         </TableCell>
                                         <TableCell className="text-right font-medium">{formatCurrency(entry.running_balance)}</TableCell>
                                         <TableCell className="text-sm">{entry.performer?.name ?? '—'}</TableCell>
+                                        <TableCell>
+                                            {entry.reference_type === null && (
+                                                <PermissionGate permission="banking.manage">
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        onClick={() => openEdit(entry)}
+                                                        title="Edit entry"
+                                                    >
+                                                        <Pencil className="h-3.5 w-3.5" />
+                                                    </Button>
+                                                </PermissionGate>
+                                            )}
+                                        </TableCell>
                                     </TableRow>
                                 ))
                             )}
@@ -218,6 +262,91 @@ export default function BankAccountsShow({ bankAccount, ledgerEntries }: Props) 
                             <Button type="button" variant="outline" onClick={() => setRecordOpen(false)}>Cancel</Button>
                             <Button type="submit" disabled={form.processing}>
                                 {form.processing ? 'Recording…' : 'Record Entry'}
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
+
+            {/* Edit Entry Dialog */}
+            <Dialog open={editOpen} onOpenChange={setEditOpen}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Pencil className="h-5 w-5" /> Edit Entry
+                        </DialogTitle>
+                    </DialogHeader>
+
+                    <form onSubmit={handleEditSubmit} className="space-y-4">
+                        <div className="rounded-md border bg-muted/40 px-4 py-3 text-sm space-y-0.5">
+                            <p className="text-muted-foreground">Account</p>
+                            <p className="font-medium">{bankAccount.bank_name || bankAccount.name}</p>
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <Label>Type</Label>
+                            <div className="flex gap-2">
+                                <Button
+                                    type="button"
+                                    variant={editForm.data.type === 'in' ? 'default' : 'outline'}
+                                    className="flex-1"
+                                    onClick={() => editForm.setData('type', 'in')}
+                                >
+                                    Money In
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant={editForm.data.type === 'out' ? 'destructive' : 'outline'}
+                                    className="flex-1"
+                                    onClick={() => editForm.setData('type', 'out')}
+                                >
+                                    Money Out
+                                </Button>
+                            </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <Label htmlFor="edit-amount">Amount *</Label>
+                            <Input
+                                id="edit-amount"
+                                type="number"
+                                step="0.01"
+                                min="0.01"
+                                value={editForm.data.amount}
+                                onChange={(e) => editForm.setData('amount', e.target.value)}
+                                autoFocus
+                            />
+                            {editForm.errors.amount && <p className="text-sm text-destructive">{editForm.errors.amount}</p>}
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <Label>Category</Label>
+                            <Select value={editForm.data.category} onValueChange={(v) => editForm.setData('category', v)}>
+                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    {CATEGORIES.map((cat) => (
+                                        <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            {editForm.errors.category && <p className="text-sm text-destructive">{editForm.errors.category}</p>}
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <Label htmlFor="edit-description">Description *</Label>
+                            <Textarea
+                                id="edit-description"
+                                value={editForm.data.description}
+                                onChange={(e) => editForm.setData('description', e.target.value)}
+                                rows={3}
+                            />
+                            {editForm.errors.description && <p className="text-sm text-destructive">{editForm.errors.description}</p>}
+                        </div>
+
+                        <DialogFooter>
+                            <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
+                            <Button type="submit" disabled={editForm.processing}>
+                                {editForm.processing ? 'Saving…' : 'Save Changes'}
                             </Button>
                         </DialogFooter>
                     </form>

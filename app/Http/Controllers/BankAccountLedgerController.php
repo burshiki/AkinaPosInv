@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Exceptions\InsufficientBalanceException;
 use App\Http\Requests\StoreLedgerEntryRequest;
+use App\Http\Requests\UpdateLedgerEntryRequest;
 use App\Http\Requests\TransferRequest;
 use App\Models\BankAccount;
+use App\Models\BankAccountLedger;
 use App\Services\BankingService;
 use Inertia\Inertia;
 
@@ -76,5 +78,28 @@ class BankAccountLedgerController extends Controller
         } catch (InsufficientBalanceException $e) {
             return back()->with('error', $e->getMessage());
         }
+    }
+
+    public function update(UpdateLedgerEntryRequest $request, BankAccount $bankAccount, BankAccountLedger $ledger)
+    {
+        if ($ledger->bank_account_id !== $bankAccount->id) {
+            abort(404);
+        }
+
+        if ($ledger->reference_type !== null) {
+            abort(403, 'Only manually created ledger entries can be edited.');
+        }
+
+        $validated = $request->validated();
+
+        $this->bankingService->updateManualEntry(
+            $ledger,
+            $validated['type'],
+            (float) $validated['amount'],
+            $validated['description'],
+            $validated['category']
+        );
+
+        return back()->with('success', 'Ledger entry updated.');
     }
 }
