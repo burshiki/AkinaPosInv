@@ -14,7 +14,7 @@ return new class extends Migration
     {
         DB::table('stock_adjustments')
             ->where('type', 'manual')
-            ->where('adjustment_type', 'subtract')
+            ->where('change_qty', '<', 0)
             ->where(function ($q) {
                 $q->where('reason', 'like', '%warranty%')
                   ->orWhere('reason', 'like', '%defective%');
