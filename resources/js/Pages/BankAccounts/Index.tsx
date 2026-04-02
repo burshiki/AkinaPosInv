@@ -19,9 +19,10 @@ import type { BankAccount } from '@/types';
 interface Props {
     bankAccounts: BankAccount[];
     totalBalance: number;
+    defaultTransferFee: number;
 }
 
-export default function BankAccountsIndex({ bankAccounts, totalBalance }: Props) {
+export default function BankAccountsIndex({ bankAccounts, totalBalance, defaultTransferFee }: Props) {
     const confirm = useConfirm();
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editingAccount, setEditingAccount] = useState<BankAccount | null>(null);
@@ -31,6 +32,7 @@ export default function BankAccountsIndex({ bankAccounts, totalBalance }: Props)
         from_account_id: '',
         to_account_id: '',
         amount: '',
+        transfer_fee: String(defaultTransferFee),
     });
 
     const openTransfer = () => {
@@ -278,6 +280,47 @@ export default function BankAccountsIndex({ bankAccounts, totalBalance }: Props)
                             })()}
                             {transferForm.errors.amount && <p className="text-sm text-destructive">{transferForm.errors.amount}</p>}
                         </div>
+
+                        <div className="space-y-1.5">
+                            <Label htmlFor="transfer_fee">Transfer Fee</Label>
+                            <Input
+                                id="transfer_fee"
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={transferForm.data.transfer_fee}
+                                onChange={(e) => transferForm.setData('transfer_fee', e.target.value)}
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                Deducted from source account (e.g. GCash bank-out fee). Saved as default.
+                            </p>
+                            {transferForm.errors.transfer_fee && <p className="text-sm text-destructive">{transferForm.errors.transfer_fee}</p>}
+                        </div>
+
+                        {(() => {
+                            const amt = parseFloat(transferForm.data.amount) || 0;
+                            const fee = parseFloat(transferForm.data.transfer_fee) || 0;
+                            if (amt <= 0 && fee <= 0) return null;
+                            const src = bankAccounts.find((a) => String(a.id) === transferForm.data.from_account_id);
+                            return (
+                                <div className="rounded-lg border bg-muted/40 p-3 space-y-1 text-sm">
+                                    <div className="flex justify-between text-muted-foreground">
+                                        <span>Transfer amount</span>
+                                        <span>{formatCurrency(amt)}</span>
+                                    </div>
+                                    {fee > 0 && (
+                                        <div className="flex justify-between text-muted-foreground">
+                                            <span>Transfer fee</span>
+                                            <span>{formatCurrency(fee)}</span>
+                                        </div>
+                                    )}
+                                    <div className="flex justify-between font-semibold border-t pt-1 mt-1">
+                                        <span>Total deducted from {src?.bank_name || src?.name || 'source'}</span>
+                                        <span>{formatCurrency(amt + fee)}</span>
+                                    </div>
+                                </div>
+                            );
+                        })()}
 
                         <DialogFooter>
                             <Button type="button" variant="outline" onClick={() => setTransferOpen(false)}>Cancel</Button>

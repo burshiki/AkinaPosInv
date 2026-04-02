@@ -80,9 +80,10 @@ class BankingService
         BankAccount $from,
         BankAccount $to,
         float $amount,
-        int $performedBy
+        int $performedBy,
+        float $fee = 0.0
     ): array {
-        return DB::transaction(function () use ($from, $to, $amount, $performedBy) {
+        return DB::transaction(function () use ($from, $to, $amount, $performedBy, $fee) {
             $outEntry = $this->recordOutflow(
                 $from, $amount,
                 "Transfer to {$to->name}",
@@ -97,7 +98,17 @@ class BankingService
                 BankAccount::class, $from->id, $performedBy
             );
 
-            return ['out' => $outEntry, 'in' => $inEntry];
+            $feeEntry = null;
+            if ($fee > 0) {
+                $feeEntry = $this->recordOutflow(
+                    $from, $fee,
+                    "Transfer fee (to {$to->name})",
+                    'transfer_fee',
+                    BankAccount::class, $to->id, $performedBy
+                );
+            }
+
+            return ['out' => $outEntry, 'in' => $inEntry, 'fee' => $feeEntry];
         });
     }
 

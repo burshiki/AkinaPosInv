@@ -17,6 +17,7 @@ class TransferRequest extends FormRequest
             'from_account_id' => ['required', 'exists:bank_accounts,id'],
             'to_account_id' => ['required', 'exists:bank_accounts,id', 'different:from_account_id'],
             'amount' => ['required', 'numeric', 'min:0.01'],
+            'transfer_fee' => ['required', 'numeric', 'min:0'],
         ];
     }
 }

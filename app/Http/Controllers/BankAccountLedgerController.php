@@ -8,6 +8,7 @@ use App\Http\Requests\UpdateLedgerEntryRequest;
 use App\Http\Requests\TransferRequest;
 use App\Models\BankAccount;
 use App\Models\BankAccountLedger;
+use App\Models\Setting;
 use App\Services\BankingService;
 use Inertia\Inertia;
 
@@ -28,6 +29,7 @@ class BankAccountLedgerController extends Controller
     {
         return Inertia::render('BankAccounts/Transfer', [
             'bankAccounts' => BankAccount::where('is_active', true)->get(),
+            'defaultTransferFee' => (float) Setting::get('transfer_fee', '0'),
         ]);
     }
 
@@ -71,10 +73,19 @@ class BankAccountLedgerController extends Controller
         try {
             $from = BankAccount::findOrFail($validated['from_account_id']);
             $to = BankAccount::findOrFail($validated['to_account_id']);
+            $fee = (float) $validated['transfer_fee'];
 
-            $this->bankingService->transfer($from, $to, $validated['amount'], $request->user()->id);
+            // Save as new default fee
+            Setting::set('transfer_fee', $fee);
 
-            return back()->with('success', "Transferred ₱{$validated['amount']} from {$from->name} to {$to->name}.");
+            $this->bankingService->transfer($from, $to, $validated['amount'], $request->user()->id, $fee);
+
+            $msg = "Transferred ₱{$validated['amount']} from {$from->name} to {$to->name}.";
+            if ($fee > 0) {
+                $msg .= " Transfer fee of ₱{$fee} was deducted from {$from->name}.";
+            }
+
+            return back()->with('success', $msg);
         } catch (InsufficientBalanceException $e) {
             return back()->with('error', $e->getMessage());
         }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreBankAccountRequest;
 use App\Http\Requests\UpdateBankAccountRequest;
 use App\Models\BankAccount;
+use App\Models\Setting;
 use Inertia\Inertia;
 
 class BankAccountController extends Controller
@@ -18,6 +19,7 @@ class BankAccountController extends Controller
         return Inertia::render('BankAccounts/Index', [
             'bankAccounts' => $accounts,
             'totalBalance' => $accounts->where('is_active', true)->sum('balance'),
+            'defaultTransferFee' => (float) Setting::get('transfer_fee', '0'),
         ]);
     }
 
