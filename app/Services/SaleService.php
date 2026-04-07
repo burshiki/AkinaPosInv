@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Exceptions\InsufficientStockException;
 use App\Jobs\LowStockAlertJob;
 use App\Models\BankAccount;
+use App\Models\CashDrawerExpense;
 use App\Models\CashDrawerSession;
 use App\Models\SaleShipping;
 use App\Models\CustomerDebt;
@@ -444,6 +445,19 @@ class SaleService
 
             if ($returnData['type'] === 'refund' && $totalRefund > 0) {
                 $refundTotal = $totalRefund + $totalTaxRefund;
+
+                if (($returnData['refund_method'] ?? '') === 'cash') {
+                    $drawerSession = CashDrawerSession::forUser($user->id)->open()->first();
+                    if ($drawerSession) {
+                        CashDrawerExpense::create([
+                            'cash_drawer_session_id' => $drawerSession->id,
+                            'performed_by'           => $user->id,
+                            'category'               => 'refund',
+                            'amount'                 => $refundTotal,
+                            'description'            => "Cash refund #{$returnNumber} for Sale #{$sale->receipt_number}",
+                        ]);
+                    }
+                }
 
                 if (($returnData['refund_method'] ?? '') === 'online' && !empty($returnData['bank_account_id'])) {
                     $bankAccount = BankAccount::findOrFail($returnData['bank_account_id']);
