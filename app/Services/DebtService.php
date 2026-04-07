@@ -17,13 +17,16 @@ class DebtService
 
     public function createDebtFromSale(Sale $sale): CustomerDebt
     {
+        $shippingFee = (float) ($sale->shipping?->shipping_fee ?? 0);
+        $totalAmount = (float) $sale->total + $shippingFee;
+
         return CustomerDebt::create([
             'customer_name'  => $sale->customer_name,
             'customer_phone' => $sale->customer_phone,
             'sale_id'        => $sale->id,
-            'total_amount'   => $sale->total,
+            'total_amount'   => $totalAmount,
             'paid_amount'    => 0,
-            'balance'        => $sale->total,
+            'balance'        => $totalAmount,
             'status'         => 'unpaid',
         ]);
     }

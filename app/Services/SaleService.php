@@ -194,6 +194,21 @@ class SaleService
                 }
             }
 
+            // Create shipping record before debt creation so the fee is included in the debt total
+            if (!empty($validated['has_shipping'])) {
+                $fee = (isset($validated['shipping_fee']) && $validated['shipping_fee'] !== '' && $validated['shipping_fee'] !== null)
+                    ? (float) $validated['shipping_fee']
+                    : null;
+                SaleShipping::create([
+                    'sale_id'          => $sale->id,
+                    'shipping_address' => $validated['shipping_address'],
+                    'shipping_fee'     => $fee,
+                    'fee_status'       => $fee !== null ? 'confirmed' : 'pending',
+                    'courier'          => $validated['shipping_courier'] ?? null,
+                    'notes'            => $validated['shipping_notes'] ?? null,
+                ]);
+            }
+
             if ($validated['payment_method'] === 'online') {
                 $bankAccount = BankAccount::findOrFail($validated['bank_account_id']);
                 $this->bankingService->recordInflow(
@@ -202,7 +217,7 @@ class SaleService
                     Sale::class, $sale->id, $cashier->id
                 );
             } elseif ($validated['payment_method'] === 'credit') {
-                $this->debtService->createDebtFromSale($sale);
+                $this->debtService->createDebtFromSale($sale->load('shipping'));
             }
 
             // Award loyalty points (1 point per peso spent)
@@ -230,21 +245,6 @@ class SaleService
                         'status'     => 'claimed',
                         'claimed_at' => now(),
                     ]);
-            }
-
-            // Create shipping record if this sale is for delivery
-            if (!empty($validated['has_shipping'])) {
-                $fee = (isset($validated['shipping_fee']) && $validated['shipping_fee'] !== '' && $validated['shipping_fee'] !== null)
-                    ? (float) $validated['shipping_fee']
-                    : null;
-                SaleShipping::create([
-                    'sale_id'          => $sale->id,
-                    'shipping_address' => $validated['shipping_address'],
-                    'shipping_fee'     => $fee,
-                    'fee_status'       => $fee !== null ? 'confirmed' : 'pending',
-                    'courier'          => $validated['shipping_courier'] ?? null,
-                    'notes'            => $validated['shipping_notes'] ?? null,
-                ]);
             }
 
             return $sale->load('items');
