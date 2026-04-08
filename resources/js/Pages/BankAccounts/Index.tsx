@@ -302,11 +302,20 @@ export default function BankAccountsIndex({ bankAccounts, totalBalance, defaultT
                             const fee = parseFloat(transferForm.data.transfer_fee) || 0;
                             if (amt <= 0 && fee <= 0) return null;
                             const src = bankAccounts.find((a) => String(a.id) === transferForm.data.from_account_id);
+                            const srcBalance = parseFloat(String(src?.balance ?? 0));
+                            const feeInclusive = fee > 0 && src !== undefined && amt <= srcBalance && amt + fee > srcBalance;
+                            const netAmount = feeInclusive ? amt - fee : amt;
+                            const totalDeducted = feeInclusive ? amt : amt + fee;
                             return (
                                 <div className="rounded-lg border bg-muted/40 p-3 space-y-1 text-sm">
+                                    {feeInclusive && (
+                                        <p className="text-xs text-amber-600 font-medium pb-1">
+                                            Not enough balance to cover the fee separately — fee will be deducted from the transfer amount.
+                                        </p>
+                                    )}
                                     <div className="flex justify-between text-muted-foreground">
-                                        <span>Transfer amount</span>
-                                        <span>{formatCurrency(amt)}</span>
+                                        <span>{feeInclusive ? 'Recipient receives' : 'Transfer amount'}</span>
+                                        <span>{formatCurrency(netAmount)}</span>
                                     </div>
                                     {fee > 0 && (
                                         <div className="flex justify-between text-muted-foreground">
@@ -316,7 +325,7 @@ export default function BankAccountsIndex({ bankAccounts, totalBalance, defaultT
                                     )}
                                     <div className="flex justify-between font-semibold border-t pt-1 mt-1">
                                         <span>Total deducted from {src?.bank_name || src?.name || 'source'}</span>
-                                        <span>{formatCurrency(amt + fee)}</span>
+                                        <span>{formatCurrency(totalDeducted)}</span>
                                     </div>
                                 </div>
                             );

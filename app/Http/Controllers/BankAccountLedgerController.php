@@ -78,11 +78,16 @@ class BankAccountLedgerController extends Controller
             // Save as new default fee
             Setting::set('transfer_fee', $fee);
 
-            $this->bankingService->transfer($from, $to, $validated['amount'], $request->user()->id, $fee);
+            $result = $this->bankingService->transfer($from, $to, $validated['amount'], $request->user()->id, $fee);
 
-            $msg = "Transferred ₱{$validated['amount']} from {$from->name} to {$to->name}.";
+            $netAmount = $result['net_amount'];
+            $msg = "Transferred ₱{$netAmount} from {$from->name} to {$to->name}.";
             if ($fee > 0) {
-                $msg .= " Transfer fee of ₱{$fee} was deducted from {$from->name}.";
+                if ($result['fee_inclusive']) {
+                    $msg .= " Transfer fee of ₱{$fee} was deducted from the transfer amount (insufficient balance to cover fee separately).";
+                } else {
+                    $msg .= " Transfer fee of ₱{$fee} was deducted from {$from->name}.";
+                }
             }
 
             return back()->with('success', $msg);

@@ -84,15 +84,30 @@ class BankingService
         float $fee = 0.0
     ): array {
         return DB::transaction(function () use ($from, $to, $amount, $performedBy, $fee) {
+            // If balance can cover the transfer but not the fee on top,
+            // deduct the fee from the transfer amount instead (fee-inclusive mode).
+            $feeInclusive = false;
+            $netAmount = $amount;
+
+            if ($fee > 0 && $from->balance >= $amount && $from->balance < $amount + $fee) {
+                $netAmount = $amount - $fee;
+                if ($netAmount <= 0) {
+                    throw new InsufficientBalanceException(
+                        "Transfer amount in {$from->name} is too small to cover the transfer fee of ₱{$fee}."
+                    );
+                }
+                $feeInclusive = true;
+            }
+
             $outEntry = $this->recordOutflow(
-                $from, $amount,
+                $from, $netAmount,
                 "Transfer to {$to->name}",
                 'transfer',
                 BankAccount::class, $to->id, $performedBy
             );
 
             $inEntry = $this->recordInflow(
-                $to, $amount,
+                $to, $netAmount,
                 "Transfer from {$from->name}",
                 'transfer',
                 BankAccount::class, $from->id, $performedBy
@@ -108,7 +123,7 @@ class BankingService
                 );
             }
 
-            return ['out' => $outEntry, 'in' => $inEntry, 'fee' => $feeEntry];
+            return ['out' => $outEntry, 'in' => $inEntry, 'fee' => $feeEntry, 'fee_inclusive' => $feeInclusive, 'net_amount' => $netAmount];
         });
     }
 

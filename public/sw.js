@@ -1,7 +1,6 @@
-const CACHE_NAME = 'akina-pos-v1';
+const CACHE_NAME = 'akina-pos-v3';
 const STATIC_ASSETS = [
     '/',
-    '/offline',
     '/manifest.json',
 ];
 
@@ -23,7 +22,8 @@ self.addEventListener('activate', (event) => {
     self.clients.claim();
 });
 
-// Fetch: network-first for pages, cache-first for static assets
+// Fetch: network-first for /build/ assets (Vite content-hashes handle cache busting),
+// cache-first only for icons/fonts/images, network-first for everything else
 self.addEventListener('fetch', (event) => {
     const { request } = event;
     const url = new URL(request.url);
@@ -31,11 +31,24 @@ self.addEventListener('fetch', (event) => {
     // Skip non-GET and cross-origin
     if (request.method !== 'GET' || url.origin !== self.location.origin) return;
 
-    // Static assets (JS, CSS, fonts, images): cache-first
+    // /build/ JS+CSS: always network-first — Vite hashes filenames, never stale
+    if (url.pathname.startsWith('/build/')) {
+        event.respondWith(
+            fetch(request).then((response) => {
+                if (response.ok) {
+                    const clone = response.clone();
+                    caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+                }
+                return response;
+            }).catch(() => caches.match(request))
+        );
+        return;
+    }
+
+    // Static assets (fonts, images, icons): cache-first
     if (
-        url.pathname.startsWith('/build/') ||
         url.pathname.startsWith('/icons/') ||
-        url.pathname.match(/\.(js|css|woff2?|ttf|png|jpg|svg|ico)$/)
+        url.pathname.match(/\.(woff2?|ttf|png|jpg|svg|ico)$/)
     ) {
         event.respondWith(
             caches.match(request).then((cached) => {

@@ -32,7 +32,17 @@ export default function Transfer({ bankAccounts, defaultTransferFee }: Props) {
 
     const parsedAmount = parseFloat(data.amount) || 0;
     const parsedFee = parseFloat(data.transfer_fee) || 0;
-    const totalDeducted = parsedAmount + parsedFee;
+    const fromBalance = parseFloat(String(fromAccount?.balance ?? 0));
+
+    // Fee-inclusive mode: balance covers the amount but not amount + fee
+    const feeInclusive =
+        parsedFee > 0 &&
+        fromAccount !== undefined &&
+        parsedAmount <= fromBalance &&
+        parsedAmount + parsedFee > fromBalance;
+
+    const netAmount = feeInclusive ? parsedAmount - parsedFee : parsedAmount;
+    const totalDeducted = feeInclusive ? parsedAmount : parsedAmount + parsedFee;
 
     return (
         <AuthenticatedLayout header="Transfer Funds">
@@ -122,9 +132,14 @@ export default function Transfer({ bankAccounts, defaultTransferFee }: Props) {
 
                             {(parsedAmount > 0 || parsedFee > 0) && (
                                 <div className="rounded-lg border bg-muted/40 p-3 space-y-1 text-sm">
+                                    {feeInclusive && (
+                                        <p className="text-xs text-amber-600 font-medium pb-1">
+                                            Not enough balance to cover the fee separately — fee will be deducted from the transfer amount.
+                                        </p>
+                                    )}
                                     <div className="flex justify-between text-muted-foreground">
-                                        <span>Transfer amount</span>
-                                        <span>{formatCurrency(parsedAmount)}</span>
+                                        <span>{feeInclusive ? 'Recipient receives' : 'Transfer amount'}</span>
+                                        <span>{formatCurrency(netAmount)}</span>
                                     </div>
                                     {parsedFee > 0 && (
                                         <div className="flex justify-between text-muted-foreground">
