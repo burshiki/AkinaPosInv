@@ -99,14 +99,6 @@ export default function SalesIndex({ sales, filters, pendingShippings }: Props) 
                                     >
                                         {s.sale?.receipt_number ?? `Sale #${s.sale_id}`}
                                     </Link>
-                                    <span className="text-amber-700 dark:text-amber-500">—</span>
-                                    <span className="truncate">{s.shipping_address}</span>
-                                    <Badge
-                                        variant="outline"
-                                        className="ml-auto shrink-0 capitalize border-amber-400 text-amber-800 dark:text-amber-400"
-                                    >
-                                        {s.fee_status}
-                                    </Badge>
                                 </li>
                             ))}
                         </ul>

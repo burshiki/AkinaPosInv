@@ -150,10 +150,9 @@ export interface Sale {
 export interface SaleShipping {
     id: number;
     sale_id: number;
-    shipping_address: string;
+    shipping_address: string | null;
     shipping_fee: string | null;
     fee_status: 'pending' | 'confirmed' | 'paid';
-    courier: string | null;
     tracking_number: string | null;
     notes: string | null;
     created_at: string;

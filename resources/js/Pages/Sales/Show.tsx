@@ -18,7 +18,7 @@ interface Props {
 
 export default function SalesShow({ sale }: Props) {
     const [confirmOpen, setConfirmOpen] = useState(false);
-    const confirmForm = useForm({ shipping_fee: '', courier: sale.shipping?.courier ?? '', tracking_number: '', notes: '' });
+    const confirmForm = useForm({ shipping_fee: '', tracking_number: '', notes: '' });
 
     const feeVariant = (status: string) => {
         switch (status) {
@@ -96,21 +96,11 @@ export default function SalesShow({ sale }: Props) {
                         <CardContent className="space-y-3 text-sm">
                             <div className="rounded-md border bg-muted/40 px-4 py-3 space-y-1.5">
                                 <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Address</span>
-                                    <span className="text-right max-w-xs">{sale.shipping.shipping_address}</span>
-                                </div>
-                                <div className="flex justify-between">
                                     <span className="text-muted-foreground">Shipping Fee</span>
                                     <span className="font-mono font-medium">
                                         {sale.shipping.shipping_fee !== null ? formatCurrency(Number(sale.shipping.shipping_fee)) : <span className="text-muted-foreground italic">TBD</span>}
                                     </span>
                                 </div>
-                                {sale.shipping.courier && (
-                                    <div className="flex justify-between">
-                                        <span className="text-muted-foreground">Courier</span>
-                                        <span>{sale.shipping.courier}</span>
-                                    </div>
-                                )}
                                 {sale.shipping.tracking_number && (
                                     <div className="flex justify-between">
                                         <span className="text-muted-foreground">Tracking #</span>
@@ -169,9 +159,6 @@ export default function SalesShow({ sale }: Props) {
                         </DialogTitle>
                     </DialogHeader>
                     <form onSubmit={handleConfirmFee} className="space-y-4">
-                        <div className="rounded-md border bg-muted/40 px-4 py-3 text-sm space-y-1">
-                            <p><span className="text-muted-foreground">To: </span>{sale.shipping.shipping_address}</p>
-                        </div>
                         <div className="space-y-1.5">
                             <Label htmlFor="sf-fee">Shipping Fee (₱) *</Label>
                             <Input
@@ -185,15 +172,6 @@ export default function SalesShow({ sale }: Props) {
                                 autoFocus
                             />
                             {confirmForm.errors.shipping_fee && <p className="text-sm text-destructive">{confirmForm.errors.shipping_fee}</p>}
-                        </div>
-                        <div className="space-y-1.5">
-                            <Label htmlFor="sf-courier">Courier</Label>
-                            <Input
-                                id="sf-courier"
-                                value={confirmForm.data.courier}
-                                onChange={(e) => confirmForm.setData('courier', e.target.value)}
-                                placeholder="e.g. J&T, LBC, GrabExpress"
-                            />
                         </div>
                         <div className="space-y-1.5">
                             <Label htmlFor="sf-tracking">Tracking Number</Label>

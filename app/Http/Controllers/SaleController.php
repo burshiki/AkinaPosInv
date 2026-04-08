@@ -26,7 +26,7 @@ class SaleController extends Controller
     public function index()
     {
         $pendingShippings = SaleShipping::with('sale')
-            ->whereIn('fee_status', ['pending', 'confirmed'])
+            ->where('fee_status', 'pending')
             ->latest()
             ->get();
 

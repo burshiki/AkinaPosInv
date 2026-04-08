@@ -201,10 +201,8 @@ class SaleService
                     : null;
                 SaleShipping::create([
                     'sale_id'          => $sale->id,
-                    'shipping_address' => $validated['shipping_address'],
                     'shipping_fee'     => $fee,
                     'fee_status'       => $fee !== null ? 'confirmed' : 'pending',
-                    'courier'          => $validated['shipping_courier'] ?? null,
                     'notes'            => $validated['shipping_notes'] ?? null,
                 ]);
             }

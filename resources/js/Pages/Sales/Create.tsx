@@ -68,9 +68,7 @@ export default function SalesCreate({ products, categories, bankAccounts, custom
     const [quickErrors, setQuickErrors] = useState<Record<string, string>>({});
     // Shipping state
     const [hasShipping, setHasShipping] = useState(false);
-    const [shippingAddress, setShippingAddress] = useState('');
     const [shippingFee, setShippingFee] = useState<string>('');
-    const [shippingCourier, setShippingCourier] = useState<string>('');
     const [shippingNotes, setShippingNotes] = useState<string>('');
     const searchRef = useRef<HTMLInputElement>(null);
     const customerDropdownRef = useRef<HTMLDivElement>(null);
@@ -371,9 +369,7 @@ export default function SalesCreate({ products, categories, bankAccounts, custom
                 notes: notes || null,
                 repair_job_id: initialRepairJob?.id ?? null,
                 has_shipping: hasShipping || null,
-                shipping_address: hasShipping ? shippingAddress.trim() || null : null,
                 shipping_fee: hasShipping && shippingFee !== '' ? shippingFee : null,
-                shipping_courier: hasShipping && shippingCourier.trim() ? shippingCourier.trim() : null,
                 shipping_notes: hasShipping && shippingNotes.trim() ? shippingNotes.trim() : null,
                 items: [
                     ...cart.map((item) => ({
@@ -397,9 +393,7 @@ export default function SalesCreate({ products, categories, bankAccounts, custom
                     setDiscountAmount('0');
                     setNotes('');
                     setHasShipping(false);
-                    setShippingAddress('');
                     setShippingFee('');
-                    setShippingCourier('');
                     setShippingNotes('');
                     setProcessing(false);
                 },
@@ -759,36 +753,16 @@ export default function SalesCreate({ products, categories, bankAccounts, custom
                                 {hasShipping && (
                                     <div className="space-y-2 pt-1">
                                         <div className="space-y-1">
-                                            <Label className="text-xs">Delivery Address *</Label>
+                                            <Label className="text-xs">Shipping Fee (optional)</Label>
                                             <Input
-                                                value={shippingAddress}
-                                                onChange={(e) => setShippingAddress(e.target.value)}
-                                                placeholder="Full delivery address"
+                                                type="number"
+                                                min="0"
+                                                step="0.01"
+                                                value={shippingFee}
+                                                onChange={(e) => setShippingFee(e.target.value)}
+                                                placeholder="TBD"
                                                 className="h-8 text-sm"
                                             />
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <div className="flex-1 space-y-1">
-                                                <Label className="text-xs">Shipping Fee (optional)</Label>
-                                                <Input
-                                                    type="number"
-                                                    min="0"
-                                                    step="0.01"
-                                                    value={shippingFee}
-                                                    onChange={(e) => setShippingFee(e.target.value)}
-                                                    placeholder="TBD"
-                                                    className="h-8 text-sm"
-                                                />
-                                            </div>
-                                            <div className="flex-1 space-y-1">
-                                                <Label className="text-xs">Courier</Label>
-                                                <Input
-                                                    value={shippingCourier}
-                                                    onChange={(e) => setShippingCourier(e.target.value)}
-                                                    placeholder="e.g. J&T, LBC"
-                                                    className="h-8 text-sm"
-                                                />
-                                            </div>
                                         </div>
                                         {shippingFee === '' && (
                                             <p className="text-xs text-muted-foreground">Leave fee blank if not yet confirmed — you can update it later.</p>
