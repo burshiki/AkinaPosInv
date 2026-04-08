@@ -105,8 +105,8 @@ export default function SalesIndex({ sales, filters, pendingShippings }: Props) 
                     </div>
                 )}
 
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                    <div className="relative flex-1 max-w-sm">
+                <div className="flex flex-col gap-3">
+                    <div className="relative flex-1">
                         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                         <Input
                             placeholder="Search receipt #..."
@@ -115,15 +115,75 @@ export default function SalesIndex({ sales, filters, pendingShippings }: Props) 
                             className="pl-9"
                         />
                     </div>
-                    <div className="flex items-center gap-2">
-                        <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-40" />
-                        <span className="text-muted-foreground">to</span>
-                        <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-40" />
-                        <Button variant="outline" size="sm" onClick={handleDateFilter}>Filter</Button>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="flex-1 min-w-[130px]" />
+                        <span className="text-muted-foreground text-sm">to</span>
+                        <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="flex-1 min-w-[130px]" />
+                        <Button variant="outline" size="sm" onClick={handleDateFilter} className="shrink-0">Filter</Button>
                     </div>
                 </div>
 
-                <div className="rounded-md border">
+                {/* Mobile card list */}
+                <div className="flex flex-col gap-3 md:hidden">
+                    {sales.data.length === 0 ? (
+                        <div className="rounded-md border p-8 text-center text-muted-foreground">No sales found</div>
+                    ) : (
+                        sales.data.map((sale) => (
+                            <div key={sale.id} className="rounded-lg border bg-card p-4 space-y-3">
+                                <div className="flex items-start justify-between gap-2">
+                                    <div>
+                                        <p className="font-mono font-semibold text-sm">{sale.receipt_number}</p>
+                                        <p className="text-xs text-muted-foreground">{formatDate(sale.sold_at)}</p>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                                        <Badge variant={STATUS_CFG[sale.status] ?? 'secondary'}>{sale.status}</Badge>
+                                        {sale.shipping && sale.shipping.fee_status !== 'paid' && (
+                                            <Badge variant="outline" className="border-amber-400 text-amber-700 dark:text-amber-400 gap-1">
+                                                <Truck className="h-3 w-3" />
+                                                {sale.shipping.fee_status}
+                                            </Badge>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                                    <div>
+                                        <p className="text-xs text-muted-foreground">Cashier</p>
+                                        <p>{sale.user?.name ?? '—'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-muted-foreground">Customer</p>
+                                        <p>{sale.customer_name || '—'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-muted-foreground">Payment</p>
+                                        <Badge variant="outline" className="mt-0.5">{sale.payment_method}</Badge>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-muted-foreground">Total</p>
+                                        <p className="font-semibold">{formatCurrency(sale.total)}</p>
+                                    </div>
+                                </div>
+                                <div className="flex gap-2 pt-1">
+                                    <Button variant="outline" size="sm" className="flex-1" asChild>
+                                        <Link href={route('sales.show', sale.id)}>
+                                            <Eye className="h-4 w-4 mr-1.5" /> View
+                                        </Link>
+                                    </Button>
+                                    {sale.status === 'completed' && (
+                                        <PermissionGate permission="sales.void">
+                                            <Button variant="destructive" size="sm" className="flex-1" onClick={() => handleVoid(sale)}>
+                                                <Ban className="h-4 w-4 mr-1.5" /> Void
+                                            </Button>
+                                        </PermissionGate>
+                                    )}
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+
+                {/* Desktop table */}
+                <div className="hidden md:block rounded-md border">
                     <ScrollArea>
                     <Table>
                         <TableHeader>
