@@ -70,8 +70,12 @@ export default function SalesCreate({ products, categories, bankAccounts, custom
     const [hasShipping, setHasShipping] = useState(false);
     const [shippingFee, setShippingFee] = useState<string>('');
     const [shippingNotes, setShippingNotes] = useState<string>('');
+    // Cart resizing state
+    const [cartWidth, setCartWidth] = useState(384); // Initial: w-96 = 384px
+    const [isResizing, setIsResizing] = useState(false);
     const searchRef = useRef<HTMLInputElement>(null);
     const customerDropdownRef = useRef<HTMLDivElement>(null);
+    const cartPanelRef = useRef<HTMLDivElement>(null);
 
     // Open receipt modal when a completed sale arrives
     useEffect(() => {
@@ -198,6 +202,35 @@ export default function SalesCreate({ products, categories, bankAccounts, custom
         document.addEventListener('keydown', handleKeyDown, true);
         return () => document.removeEventListener('keydown', handleKeyDown, true);
     }, [cart, showPalette]);
+
+    // Cart resize handlers
+    useEffect(() => {
+        const handleMouseMove = (e: MouseEvent) => {
+            if (!isResizing || !cartPanelRef.current) return;
+            
+            // Get the container width (main layout width)
+            const layout = cartPanelRef.current.parentElement;
+            if (!layout) return;
+            
+            const layoutRect = layout.getBoundingClientRect();
+            const containerRight = layoutRect.right;
+            const newWidth = Math.max(320, Math.min(800, containerRight - e.clientX));
+            setCartWidth(newWidth);
+        };
+
+        const handleMouseUp = () => {
+            setIsResizing(false);
+        };
+
+        if (isResizing) {
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+            return () => {
+                document.removeEventListener('mousemove', handleMouseMove);
+                document.removeEventListener('mouseup', handleMouseUp);
+            };
+        }
+    }, [isResizing]);
 
     // Filter products
     const filteredProducts = useMemo(() => {
@@ -500,181 +533,190 @@ export default function SalesCreate({ products, categories, bankAccounts, custom
                     </ScrollArea>
                 </div>
 
-                {/* Right Panel - Cart */}
-                <Card className="flex w-96 flex-col">
-                    <CardHeader className="pb-3">
-                        <div className="flex items-center justify-between">
-                            <CardTitle className="flex items-center gap-2 text-lg">
-                                <ShoppingCart className="h-5 w-5" />
-                                Cart ({cart.length})
-                            </CardTitle>
-                            <div className="flex items-center gap-2">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPalette(true)}
-                                    className="hidden items-center gap-1 rounded border bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-accent sm:flex"
-                                    title="Open command palette"
-                                >
-                                    <span>⌘K</span>
-                                </button>
-                                {repairQueue.length > 0 && !initialRepairJob && (
+                {/* Right Panel - Cart (with resize handle) */}
+                <div className="relative flex">
+                    {/* Resize Handle */}
+                    <div
+                        onMouseDown={() => setIsResizing(true)}
+                        className="w-1 bg-border hover:bg-primary/60 cursor-col-resize transition-colors shrink-0"
+                        title="Drag to resize cart"
+                    />
+                    <Card ref={cartPanelRef} className="flex flex-col" style={{ width: `${cartWidth}px` }}>
+                        <CardHeader className="pb-3">
+                            <div className="flex items-center justify-between">
+                                <CardTitle className="flex items-center gap-2 text-lg">
+                                    <ShoppingCart className="h-5 w-5" />
+                                    Cart ({cart.length})
+                                </CardTitle>
+                                <div className="flex items-center gap-2">
                                     <button
                                         type="button"
-                                        onClick={() => setShowRepairQueue(true)}
-                                        className="relative flex items-center gap-1 rounded border bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800 hover:bg-amber-100 dark:bg-amber-950 dark:text-amber-200 dark:hover:bg-amber-900"
-                                        title="Repair jobs waiting for payment"
+                                        onClick={() => setShowPalette(true)}
+                                        className="hidden items-center gap-1 rounded border bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-accent sm:flex"
+                                        title="Open command palette"
                                     >
-                                        <Wrench className="h-3 w-3" />
-                                        Repairs
-                                        <span className="ml-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-amber-600 text-[10px] text-white">
-                                            {repairQueue.length}
-                                        </span>
+                                        <span>⌘K</span>
                                     </button>
-                                )}
-                                {cart.length > 0 && (
-                                    <Button variant="ghost" size="sm" onClick={() => setCart([])}>
-                                        <X className="mr-1 h-3 w-3" /> Clear
-                                    </Button>
-                                )}
+                                    {repairQueue.length > 0 && !initialRepairJob && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowRepairQueue(true)}
+                                            className="relative flex items-center gap-1 rounded border bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800 hover:bg-amber-100 dark:bg-amber-950 dark:text-amber-200 dark:hover:bg-amber-900"
+                                            title="Repair jobs waiting for payment"
+                                        >
+                                            <Wrench className="h-3 w-3" />
+                                            Repairs
+                                            <span className="ml-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-amber-600 text-[10px] text-white">
+                                                {repairQueue.length}
+                                            </span>
+                                        </button>
+                                    )}
+                                    {cart.length > 0 && (
+                                        <Button variant="ghost" size="sm" onClick={() => setCart([])}>
+                                            <X className="mr-1 h-3 w-3" /> Clear
+                                        </Button>
+                                    )}
+                                </div>
                             </div>
-                        </div>
-                    </CardHeader>
-                    <Separator />
+                        </CardHeader>
+                        <Separator />
 
-                    {/* Customer Selector (always visible, optional) */}
-                    <div className="border-b px-4 py-2">
-                        <div className="relative" ref={customerDropdownRef}>
-                            <div className="flex items-center justify-between mb-1">
-                                <Label className="text-xs flex items-center gap-1">
-                                    <UserRound className="h-3 w-3" /> Customer (optional)
-                                </Label>
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-5 w-5"
-                                    title="Add new customer"
-                                    onClick={openQuickAdd}
-                                >
-                                    <UserPlus className="h-3 w-3" />
-                                </Button>
-                            </div>
-                            {selectedCustomerId ? (
-                                <div className="flex items-center justify-between rounded-md border bg-muted/50 px-3 py-1.5 text-sm">
-                                    <div>
-                                        <span className="font-medium">{customerName}</span>
-                                        {customerPhone && (
-                                            <span className="ml-2 text-muted-foreground">{customerPhone}</span>
-                                        )}
-                                    </div>
-                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={clearCustomer}>
-                                        <X className="h-3 w-3" />
+                        {/* Customer Selector (always visible, optional) */}
+                        <div className="border-b px-4 py-2">
+                            <div className="relative" ref={customerDropdownRef}>
+                                <div className="flex items-center justify-between mb-1">
+                                    <Label className="text-xs flex items-center gap-1">
+                                        <UserRound className="h-3 w-3" /> Customer (optional)
+                                    </Label>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-5 w-5"
+                                        title="Add new customer"
+                                        onClick={openQuickAdd}
+                                    >
+                                        <UserPlus className="h-3 w-3" />
                                     </Button>
                                 </div>
-                            ) : (
-                                <>
-                                    <Input
-                                        placeholder="Search customer..."
-                                        value={customerSearch}
-                                        onChange={(e) => {
-                                            setCustomerSearch(e.target.value);
-                                            setShowCustomerDropdown(true);
-                                        }}
-                                        onFocus={() => setShowCustomerDropdown(true)}
-                                        className="h-8 text-sm"
-                                    />
-                                    {showCustomerDropdown && customerSearch.trim() && (
-                                        <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-40 overflow-y-auto rounded-md border bg-popover shadow-md">
-                                            {filteredCustomers.length === 0 ? (
-                                                <button
-                                                    type="button"
-                                                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-accent text-primary"
-                                                    onClick={openQuickAdd}
-                                                >
-                                                    <UserPlus className="h-3 w-3 shrink-0" />
-                                                    <span>Create "<strong>{customerSearch}</strong>"</span>
-                                                </button>
-                                            ) : (
-                                                <>
-                                                    {filteredCustomers.slice(0, 10).map((customer) => (
-                                                        <button
-                                                            key={customer.id}
-                                                            type="button"
-                                                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-accent"
-                                                            onClick={() => selectCustomer(customer)}
-                                                        >
-                                                            <UserRound className="h-3 w-3 shrink-0 text-muted-foreground" />
-                                                            <div className="min-w-0">
-                                                                <p className="truncate font-medium">{customer.name}</p>
-                                                                {customer.phone && (
-                                                                    <p className="truncate text-xs text-muted-foreground">{customer.phone}</p>
-                                                                )}
-                                                            </div>
-                                                        </button>
-                                                    ))}
+                                {selectedCustomerId ? (
+                                    <div className="flex items-center justify-between rounded-md border bg-muted/50 px-3 py-1.5 text-sm">
+                                        <div>
+                                            <span className="font-medium">{customerName}</span>
+                                            {customerPhone && (
+                                                <span className="ml-2 text-muted-foreground">{customerPhone}</span>
+                                            )}
+                                        </div>
+                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={clearCustomer}>
+                                            <X className="h-3 w-3" />
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <Input
+                                            placeholder="Search customer..."
+                                            value={customerSearch}
+                                            onChange={(e) => {
+                                                setCustomerSearch(e.target.value);
+                                                setShowCustomerDropdown(true);
+                                            }}
+                                            onFocus={() => setShowCustomerDropdown(true)}
+                                            className="h-8 text-sm"
+                                        />
+                                        {showCustomerDropdown && customerSearch.trim() && (
+                                            <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-40 overflow-y-auto rounded-md border bg-popover shadow-md">
+                                                {filteredCustomers.length === 0 ? (
                                                     <button
                                                         type="button"
-                                                        className="flex w-full items-center gap-2 border-t px-3 py-2 text-left text-sm hover:bg-accent text-primary"
+                                                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-accent text-primary"
                                                         onClick={openQuickAdd}
                                                     >
                                                         <UserPlus className="h-3 w-3 shrink-0" />
-                                                        <span>Add new customer…</span>
+                                                        <span>Create "<strong>{customerSearch}</strong>"</span>
                                                     </button>
-                                                </>
-                                            )}
-                                        </div>
-                                    )}
-                                </>
-                            )}
+                                                ) : (
+                                                    <>
+                                                        {filteredCustomers.slice(0, 10).map((customer) => (
+                                                            <button
+                                                                key={customer.id}
+                                                                type="button"
+                                                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-accent"
+                                                                onClick={() => selectCustomer(customer)}
+                                                            >
+                                                                <UserRound className="h-3 w-3 shrink-0 text-muted-foreground" />
+                                                                <div className="min-w-0">
+                                                                    <p className="truncate font-medium">{customer.name}</p>
+                                                                    {customer.phone && (
+                                                                        <p className="truncate text-xs text-muted-foreground">{customer.phone}</p>
+                                                                    )}
+                                                                </div>
+                                                            </button>
+                                                        ))}
+                                                        <button
+                                                            type="button"
+                                                            className="flex w-full items-center gap-2 border-t px-3 py-2 text-left text-sm hover:bg-accent text-primary"
+                                                            onClick={openQuickAdd}
+                                                        >
+                                                            <UserPlus className="h-3 w-3 shrink-0" />
+                                                            <span>Add new customer…</span>
+                                                        </button>
+                                                    </>
+                                                )}
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+                            </div>
                         </div>
-                    </div>
 
-                    <CardContent className="flex flex-1 flex-col overflow-hidden p-0">
-                        {/* Cart Items */}
-                        <ScrollArea className="flex-1 p-4">
-                            {cart.length === 0 ? (
-                                <p className="py-8 text-center text-sm text-muted-foreground">Cart is empty</p>
-                            ) : (
-                                <div className="space-y-3">
-                                    {cart.map((item) => (
-                                        <div key={item.product.id} className="flex items-center gap-2 rounded-md border p-2">
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-medium truncate">{item.product.name}</p>
-                                                <p className="text-xs font-bold">
-                                                    {formatCurrency(item.unitPrice ?? item.product.selling_price)}
-                                                    {item.unitPrice !== undefined && item.unitPrice !== item.product.selling_price && (
-                                                        <span className="ml-1 line-through opacity-50 font-normal">{formatCurrency(item.product.selling_price)}</span>
-                                                    )}
-                                                </p>
+                        <CardContent className="flex flex-1 flex-col overflow-hidden p-0">
+                            {/* Cart Items */}
+                            <ScrollArea className="flex-1 p-4">
+                                {cart.length === 0 ? (
+                                    <p className="py-8 text-center text-sm text-muted-foreground">Cart is empty</p>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {cart.map((item) => (
+                                            <div key={item.product.id} className="flex flex-col gap-2 rounded-md border p-2">
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-sm font-medium line-clamp-2">{item.product.name}</p>
+                                                        <p className="text-xs font-bold">
+                                                            {formatCurrency(item.unitPrice ?? item.product.selling_price)}
+                                                            {item.unitPrice !== undefined && item.unitPrice !== item.product.selling_price && (
+                                                                <span className="ml-1 line-through opacity-50 font-normal">{formatCurrency(item.product.selling_price)}</span>
+                                                            )}
+                                                        </p>
+                                                    </div>
+                                                    <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-destructive" onClick={() => removeFromCart(item.product.id)}>
+                                                        <Trash2 className="h-3 w-3" />
+                                                    </Button>
+                                                </div>
+                                                <div className="flex items-center gap-1 justify-between">
+                                                    <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => updateQuantity(item.product.id, item.quantity - 1)}>
+                                                        <Minus className="h-3 w-3" />
+                                                    </Button>
+                                                    <input
+                                                        type="number"
+                                                        min={1}
+                                                        max={(!initialRepairJob && item.unitPrice === undefined) ? item.product.stock_quantity : undefined}
+                                                        value={item.quantity}
+                                                        onChange={(e) => {
+                                                            const val = parseInt(e.target.value, 10);
+                                                            if (!isNaN(val)) updateQuantity(item.product.id, val);
+                                                        }}
+                                                        onFocus={(e) => e.target.select()}
+                                                        className="flex-1 h-7 text-center text-sm font-medium border rounded-md bg-background focus:outline-none focus:ring-1 focus:ring-ring [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                    />
+                                                    <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => updateQuantity(item.product.id, item.quantity + 1)}>
+                                                        <Plus className="h-3 w-3" />
+                                                    </Button>
+                                                </div>
                                             </div>
-                                            <div className="flex items-center gap-1">
-                                                <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => updateQuantity(item.product.id, item.quantity - 1)}>
-                                                    <Minus className="h-3 w-3" />
-                                                </Button>
-                                                <input
-                                                    type="number"
-                                                    min={1}
-                                                    max={(!initialRepairJob && item.unitPrice === undefined) ? item.product.stock_quantity : undefined}
-                                                    value={item.quantity}
-                                                    onChange={(e) => {
-                                                        const val = parseInt(e.target.value, 10);
-                                                        if (!isNaN(val)) updateQuantity(item.product.id, val);
-                                                    }}
-                                                    onFocus={(e) => e.target.select()}
-                                                    className="w-14 h-7 text-center text-sm font-medium border rounded-md bg-background focus:outline-none focus:ring-1 focus:ring-ring [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                />
-                                                <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => updateQuantity(item.product.id, item.quantity + 1)}>
-                                                    <Plus className="h-3 w-3" />
-                                                </Button>
-                                            </div>
-                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeFromCart(item.product.id)}>
-                                                <Trash2 className="h-3 w-3" />
-                                            </Button>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </ScrollArea>
+                                        ))}
+                                    </div>
+                                )}
+                            </ScrollArea>
 
                         {/* Totals & Payment */}
                         <div className="border-t p-4 space-y-3">
@@ -871,6 +913,7 @@ export default function SalesCreate({ products, categories, bankAccounts, custom
                         </div>
                     </CardContent>
                 </Card>
+                </div>
             </div>
         </AuthenticatedLayout>
 
