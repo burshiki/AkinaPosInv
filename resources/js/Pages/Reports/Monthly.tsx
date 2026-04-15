@@ -122,7 +122,7 @@ interface Report {
         sales_revenue: number;
         debt_payments: number;
         cash_receipts: { by_category: CategoryBreakdown[]; total: number };
-        bank_inflows: { by_account: AccountBreakdown[]; total: number };
+        other_bank_inflows: { by_account: AccountBreakdown[]; total: number };
         total: number;
     };
     expenses: {
@@ -597,16 +597,15 @@ export default function MonthlyReport({ report, filters }: Props) {
                                             </div>
                                         )}
 
-                                        {report.income.bank_inflows.total > 0 && (
+                                        {report.income.other_bank_inflows && report.income.other_bank_inflows.total > 0 && (
                                             <div>
                                                 <div className="flex justify-between py-1 text-sm">
                                                     <span className="text-muted-foreground">
-                                                        Bank Inflows
-                                                        <span className="text-xs ml-1 opacity-60">(incl. sale deposits)</span>
+                                                        Other Bank Inflows
                                                     </span>
-                                                    <span className="font-mono font-medium">{formatCurrency(report.income.bank_inflows.total)}</span>
+                                                    <span className="font-mono font-medium">{formatCurrency(report.income.other_bank_inflows.total)}</span>
                                                 </div>
-                                                {report.income.bank_inflows.by_account.map((a) => (
+                                                {report.income.other_bank_inflows.by_account.map((a) => (
                                                     <LineRow key={a.account_name} label={a.account_name} amount={a.total} sub />
                                                 ))}
                                             </div>

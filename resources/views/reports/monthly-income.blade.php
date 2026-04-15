@@ -145,12 +145,12 @@
                     </div>
                 @endforeach
             @endif
-            @if($report['income']['bank_inflows']['total'] > 0)
+            @if($report['income']['other_bank_inflows']['total'] > 0)
                 <div class="line-row">
-                    <span class="lbl">Bank Inflows</span>
-                    <span class="val">{{ number_format($report['income']['bank_inflows']['total'], 2) }}</span>
+                    <span class="lbl">Other Bank Inflows</span>
+                    <span class="val">{{ number_format($report['income']['other_bank_inflows']['total'], 2) }}</span>
                 </div>
-                @foreach($report['income']['bank_inflows']['by_account'] as $a)
+                @foreach($report['income']['other_bank_inflows']['by_account'] as $a)
                     <div class="line-row sub">
                         <span class="lbl">{{ $a['account_name'] }}</span>
                         <span class="val">{{ number_format($a['total'], 2) }}</span>

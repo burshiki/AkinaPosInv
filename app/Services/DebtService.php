@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\CustomerDebt;
 use App\Models\DebtPayment;
 use App\Models\BankAccount;
+use App\Models\CashDrawerReceipt;
 use App\Models\Sale;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -77,6 +78,8 @@ class DebtService
             }
 
             $actualPaid = $amount - $remaining;
+            
+            // Record bank inflow for online payments
             if ($actualPaid > 0 && $bankAccount !== null) {
                 $this->bankingService->recordInflow(
                     $bankAccount,
@@ -86,6 +89,17 @@ class DebtService
                     null, null,
                     $receivedBy
                 );
+            }
+
+            // Record cash receipt for cash payments
+            if ($actualPaid > 0 && $paymentMethod === 'cash' && $cashDrawerSessionId !== null) {
+                CashDrawerReceipt::create([
+                    'cash_drawer_session_id' => $cashDrawerSessionId,
+                    'performed_by'           => $receivedBy,
+                    'category'               => 'debt_payment',
+                    'description'            => "Debt payment from {$customerName}",
+                    'amount'                 => $actualPaid,
+                ]);
             }
 
             return $paymentsCreated;

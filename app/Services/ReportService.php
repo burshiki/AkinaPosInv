@@ -545,31 +545,51 @@ class ReportService
             : [];
 
         // ── Income ──────────────────────────────────────────────────────────
-        $debtPayments = (float) DebtPayment::whereBetween('paid_at', [$periodStart, $periodEnd])
-            ->sum('amount');
-
-        $receiptRows = CashDrawerReceipt::whereBetween('created_at', [$periodStart, $periodEnd])->get();
+        // NOTE: DebtPayment is NOT counted directly here as it's already recorded in BankAccountLedger
+        // when the payment was made via bank.
+        
+        // Cash receipts: EXCLUDE 'sale' category (already counted in Sale revenue)
+        $receiptRows = CashDrawerReceipt::whereBetween('created_at', [$periodStart, $periodEnd])
+            ->where('category', '!=', 'sale')
+            ->get();
         $cashReceiptsByCategory = $receiptRows->groupBy('category')
             ->map(fn ($g, $cat) => [
                 'category' => $cat ?: 'Uncategorized',
                 'total'    => (float) $g->sum('amount'),
             ])->values()->toArray();
 
+        // Debt payments collected: extract from ledger (NOT from DebtPayment table to avoid double-counting)
+        $debtPaymentRows = BankAccountLedger::whereBetween('transacted_at', [$periodStart, $periodEnd])
+            ->where('type', 'in')
+            ->where('category', 'debt_payment')
+            ->get();
+        $debtPayments = (float) $debtPaymentRows->sum('amount');
+
+        // Bank inflows: EXCLUDE 'sale' (already in Sale revenue) and 'debt_payment' (shown separately below)
         $bankInflowRows = BankAccountLedger::whereBetween('transacted_at', [$periodStart, $periodEnd])
             ->where('type', 'in')
+            ->whereNotIn('category', ['sale', 'debt_payment'])
             ->with('bankAccount')
             ->get();
         $bankInflowsByAccount = $bankInflowRows->groupBy('bank_account_id')
             ->map(fn ($g) => [
-                'account_name' => $g->first()->bankAccount?->name ?? 'Unknown',
+                'account_name' => ($g->first()->bankAccount?->bank_name
+                    ? $g->first()->bankAccount->bank_name . ' – ' . $g->first()->bankAccount->name
+                    : ($g->first()->bankAccount?->name ?? 'Unknown')
+                ),
                 'total'        => (float) $g->sum('amount'),
             ])->values()->toArray();
 
-        $totalIncome = $salesRevenue + $debtPayments
+        // Compute TOTAL INCOME: Sales Revenue + Filtered Cash Receipts + Debt Payments + Other Bank Inflows
+        // NO double-counting: each transaction counted exactly once from ledger source
+        $totalIncome = $salesRevenue
             + (float) $receiptRows->sum('amount')
+            + $debtPayments
             + (float) $bankInflowRows->sum('amount');
 
         // ── Expenses ────────────────────────────────────────────────────────
+        // NOTE: BillPayment is retrieved for display/categorization only, NOT for the total.
+        // Bill payments are counted via ledgers (CashDrawerExpense + BankAccountLedger with category='bill_payment')
         $billPayments = BillPayment::whereBetween('paid_at', [$periodStart, $periodEnd])
             ->with('bill')
             ->get();
@@ -580,8 +600,11 @@ class ReportService
                 'total'    => (float) $g->sum('amount'),
             ])->values()->toArray();
 
+        // Cash expenses: EXCLUDE 'bill_payment' category (already recorded in BankAccountLedger for non-cash,
+        // or counted below for cash bill payments via the bill_payment ledger entries)
         $expenseRows = CashDrawerExpense::whereBetween('created_at', [$periodStart, $periodEnd])
             ->whereNull('payment_method')
+            ->where('category', '!=', 'bill_payment')
             ->get();
         $cashExpensesByCategory = $expenseRows->groupBy('category')
             ->map(fn ($g, $cat) => [
@@ -589,8 +612,10 @@ class ReportService
                 'total'    => (float) $g->sum('amount'),
             ])->values()->toArray();
 
+        // Bank outflows: EXCLUDE 'bill_payment' category (already counted in BillPayment and ledgers)
         $bankOutflowRows = BankAccountLedger::whereBetween('transacted_at', [$periodStart, $periodEnd])
             ->where('type', 'out')
+            ->where('category', '!=', 'bill_payment')
             ->with('bankAccount')
             ->get();
         $bankOutflowsByCategory = $bankOutflowRows->groupBy('category')
@@ -607,7 +632,20 @@ class ReportService
                     ])->values()->toArray(),
             ])->values()->toArray();
 
-        $totalExpenses = (float) $billPayments->sum('amount')
+        // Compute TOTAL EXPENSES: Filtered Cash Expenses + Filtered Bank Outflows + Internal Use Cost
+        // NOTE: Bill payments are counted ONLY through the ledgers (CashDrawerExpense + BankAccountLedger),
+        // not directly from BillPayment table, to avoid double-counting.
+        // IMPORTANT: We need to get bill_payment entries from the ledgers
+        $billPaymentFromLedgers = BankAccountLedger::whereBetween('transacted_at', [$periodStart, $periodEnd])
+            ->where('type', 'out')
+            ->where('category', 'bill_payment')
+            ->sum('amount');
+        $billPaymentFromCash = CashDrawerExpense::whereBetween('created_at', [$periodStart, $periodEnd])
+            ->where('category', 'bill_payment')
+            ->sum('amount');
+        
+        $totalExpenses = $billPaymentFromLedgers
+            + $billPaymentFromCash
             + (float) $expenseRows->sum('amount')
             + (float) $bankOutflowRows->sum('amount')
             + $internalUseCost;
@@ -650,20 +688,20 @@ class ReportService
             'income' => [
                 'sales_revenue' => $salesRevenue,
                 'debt_payments' => $debtPayments,
+                'other_bank_inflows' => [
+                    'by_account' => $bankInflowsByAccount,
+                    'total'      => (float) $bankInflowRows->sum('amount'),
+                ],
                 'cash_receipts' => [
                     'by_category' => $cashReceiptsByCategory,
                     'total'       => (float) $receiptRows->sum('amount'),
-                ],
-                'bank_inflows' => [
-                    'by_account' => $bankInflowsByAccount,
-                    'total'      => (float) $bankInflowRows->sum('amount'),
                 ],
                 'total' => $totalIncome,
             ],
             'expenses' => [
                 'bills_paid' => [
                     'by_category' => $billsByCategory,
-                    'total'       => (float) $billPayments->sum('amount'),
+                    'total'       => $billPaymentFromLedgers + $billPaymentFromCash,
                 ],
                 'cash_expenses' => [
                     'by_category' => $cashExpensesByCategory,
