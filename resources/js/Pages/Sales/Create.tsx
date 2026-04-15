@@ -41,7 +41,7 @@ export default function SalesCreate({ products, categories, bankAccounts, custom
     const [cart, setCart] = useState<CartItem[]>([]);
     const [search, setSearch] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
-    const [paymentMethod, setPaymentMethod] = useState<'cash' | 'online' | 'credit'>('cash');
+    const [paymentMethod, setPaymentMethod] = useState<'cash' | 'online' | 'credit' | 'multi'>('cash');
     const [bankAccountId, setBankAccountId] = useState<string>('');
     const [amountTendered, setAmountTendered] = useState<string>('');
     const [customerName, setCustomerName] = useState('');
@@ -70,6 +70,15 @@ export default function SalesCreate({ products, categories, bankAccounts, custom
     const [hasShipping, setHasShipping] = useState(false);
     const [shippingFee, setShippingFee] = useState<string>('');
     const [shippingNotes, setShippingNotes] = useState<string>('');
+    // Multi-payment state
+    interface PaymentLine {
+        id: string;
+        method: 'cash' | 'online' | 'credit' | 'check';
+        amount: number;
+        bankAccountId?: string;
+        reference?: string;
+    }
+    const [payments, setPayments] = useState<PaymentLine[]>([{ id: '1', method: 'cash', amount: 0 }]);
     // Cart resizing state
     const [cartWidth, setCartWidth] = useState(384); // Initial: w-96 = 384px
     const [isResizing, setIsResizing] = useState(false);
@@ -189,8 +198,7 @@ export default function SalesCreate({ products, categories, bankAccounts, custom
                 setPaymentMethod('credit');
             } else if (e.key === 'F4') {
                 e.preventDefault();
-                const discountInput = document.getElementById('discount-input');
-                discountInput?.focus();
+                setPaymentMethod('multi');
             } else if (e.key === 'Escape') {
                 if (showPalette) {
                     setShowPalette(false);
@@ -272,6 +280,8 @@ export default function SalesCreate({ products, categories, bankAccounts, custom
     const total = Math.max(0, subtotal - discount + repairFeeAmount);
     const tendered = parseFloat(amountTendered) || 0;
     const change = paymentMethod === 'cash' ? Math.max(0, tendered - total) : 0;
+    const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+    const remainingBalance = Math.max(0, total - totalPaid);
 
     const addToCart = useCallback((product: Product) => {
         setCart((prev) => {
@@ -385,6 +395,7 @@ export default function SalesCreate({ products, categories, bankAccounts, custom
         if (paymentMethod === 'cash' && tendered < total) return;
         if (paymentMethod === 'online' && !bankAccountId) return;
         if (paymentMethod === 'credit' && !selectedCustomerId) return;
+        if (paymentMethod === 'multi' && totalPaid < total) return;
 
         setProcessing(true);
 
@@ -394,6 +405,12 @@ export default function SalesCreate({ products, categories, bankAccounts, custom
                 payment_method: paymentMethod,
                 bank_account_id: paymentMethod === 'online' ? bankAccountId : null,
                 amount_tendered: paymentMethod === 'cash' ? amountTendered : null,
+                payments: paymentMethod === 'multi' ? payments.map(p => ({
+                    method: p.method,
+                    amount: p.amount,
+                    bank_account_id: p.bankAccountId || null,
+                    reference_number: p.reference || null,
+                })) : null,
                 customer_id: selectedCustomerId,
                 customer_name: customerName.trim() || 'Walk-in',
                 customer_phone: customerPhone || null,
@@ -816,20 +833,21 @@ export default function SalesCreate({ products, categories, bankAccounts, custom
                             {/* Payment Method */}
                             <div className="space-y-2">
                                 <Label className="text-xs">Payment Method</Label>
-                                <div className="flex gap-1">
+                                <div className="flex gap-1 flex-wrap">
                                     {([
                                         { key: 'cash', shortcut: 'F1' },
                                         { key: 'online', shortcut: 'F2' },
                                         { key: 'credit', shortcut: 'F3' },
+                                        { key: 'multi', shortcut: 'F4' },
                                     ] as const).map(({ key, shortcut }) => (
                                         <Button
                                             key={key}
                                             variant={paymentMethod === key ? 'default' : 'outline'}
                                             size="sm"
-                                            className="flex-1 text-xs"
+                                            className={key === 'multi' ? 'text-xs' : 'flex-1 text-xs'}
                                             onClick={() => setPaymentMethod(key)}
                                         >
-                                            {key.charAt(0).toUpperCase() + key.slice(1)}
+                                            {key === 'multi' ? 'Multi' : key.charAt(0).toUpperCase() + key.slice(1)}
                                             <kbd className="ml-1 text-[10px] opacity-50">{shortcut}</kbd>
                                         </Button>
                                     ))}
@@ -893,6 +911,114 @@ export default function SalesCreate({ products, categories, bankAccounts, custom
                             {paymentMethod === 'credit' && !selectedCustomerId && (
                                 <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800 dark:bg-yellow-950 dark:border-yellow-800 dark:text-yellow-200">
                                     Please select a customer above to record a credit sale.
+                                </div>
+                            )}
+
+                            {/* Multi-Payment Breakdown */}
+                            {paymentMethod === 'multi' && (
+                                <div className="space-y-2 border-t pt-3">
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-xs font-semibold">Payment Breakdown</Label>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-6 px-2 text-xs"
+                                            onClick={() => setPayments([...payments, { id: Date.now().toString(), method: 'cash', amount: Math.max(0, total - totalPaid) }])}
+                                            disabled={remainingBalance <= 0}
+                                        >
+                                            <Plus className="h-3 w-3 mr-1" />
+                                            Add Method
+                                        </Button>
+                                    </div>
+
+                                    {/* Payment lines */}
+                                    <div className="space-y-2">
+                                        {payments.map((payment) => (
+                                            <div key={payment.id} className="flex gap-2 items-start">
+                                                {/* Method select */}
+                                                <Select value={payment.method} onValueChange={(m) => setPayments(payments.map(p => p.id === payment.id ? { ...p, method: m as any } : p))}>
+                                                    <SelectTrigger className="h-8 w-28 text-xs">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="cash">Cash</SelectItem>
+                                                        <SelectItem value="online">Online</SelectItem>
+                                                        <SelectItem value="credit">Credit</SelectItem>
+                                                        <SelectItem value="check">Check</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+
+                                                {/* Amount input */}
+                                                <Input
+                                                    type="number"
+                                                    min="0"
+                                                    step="0.01"
+                                                    placeholder="0.00"
+                                                    value={payment.amount || ''}
+                                                    onChange={(e) => setPayments(payments.map(p => p.id === payment.id ? { ...p, amount: parseFloat(e.target.value) || 0 } : p))}
+                                                    className="h-8 flex-1 text-sm"
+                                                />
+
+                                                {/* Bank account (if online) */}
+                                                {payment.method === 'online' && (
+                                                    <Select value={payment.bankAccountId || ''} onValueChange={(id) => setPayments(payments.map(p => p.id === payment.id ? { ...p, bankAccountId: id } : p))}>
+                                                        <SelectTrigger className="h-8 w-32 text-xs">
+                                                            <SelectValue placeholder="Account" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {bankAccounts.map((acct) => (
+                                                                <SelectItem key={acct.id} value={String(acct.id)}>
+                                                                    {acct.bank_name || acct.name}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                )}
+
+                                                {/* Reference (online/check) */}
+                                                {(payment.method === 'online' || payment.method === 'check') && (
+                                                    <Input
+                                                        placeholder="Ref #"
+                                                        value={payment.reference || ''}
+                                                        onChange={(e) => setPayments(payments.map(p => p.id === payment.id ? { ...p, reference: e.target.value } : p))}
+                                                        className="h-8 w-20 text-sm"
+                                                    />
+                                                )}
+
+                                                {/* Remove button */}
+                                                {payments.length > 1 && (
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8 text-destructive"
+                                                        onClick={() => setPayments(payments.filter(p => p.id !== payment.id))}
+                                                    >
+                                                        <X className="h-3 w-3" />
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Balance summary */}
+                                    <div className="rounded-md bg-muted/40 p-2 space-y-1 text-xs">
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground">Total:</span>
+                                            <span className="font-bold">{formatCurrency(total)}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground">Paid:</span>
+                                            <span className={totalPaid >= total ? 'text-green-600 font-bold' : 'font-bold'}>{formatCurrency(totalPaid)}</span>
+                                        </div>
+                                        {remainingBalance > 0 && (
+                                            <div className="flex justify-between text-amber-700">
+                                                <span>Remaining:</span>
+                                                <span className="font-bold">{formatCurrency(remainingBalance)}</span>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             )}
 

@@ -6,6 +6,7 @@ use App\Exceptions\InsufficientStockException;
 use App\Jobs\LowStockAlertJob;
 use App\Models\BankAccount;
 use App\Models\CashDrawerExpense;
+use App\Models\CashDrawerReceipt;
 use App\Models\CashDrawerSession;
 use App\Models\SaleShipping;
 use App\Models\CustomerDebt;
@@ -15,6 +16,7 @@ use App\Models\InventorySession;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SaleItem;
+use App\Models\SalePayment;
 use App\Models\SaleReturn;
 use App\Models\SaleReturnItem;
 use App\Models\StockAdjustment;
@@ -216,6 +218,48 @@ class SaleService
                 );
             } elseif ($validated['payment_method'] === 'credit') {
                 $this->debtService->createDebtFromSale($sale->load('shipping'));
+            } elseif ($validated['payment_method'] === 'multi') {
+                // Handle multi-payment
+                foreach ($validated['payments'] as $payment) {
+                    $paymentMethod = $payment['method'];
+                    $paymentAmount = (float) $payment['amount'];
+                    $bankAccountId = $payment['bank_account_id'] ?? null;
+                    $referenceNumber = $payment['reference_number'] ?? null;
+
+                    // Record payment in sale_payments table
+                    SalePayment::create([
+                        'sale_id'               => $sale->id,
+                        'payment_method'        => $paymentMethod,
+                        'amount'                => $paymentAmount,
+                        'bank_account_id'       => $bankAccountId,
+                        'cash_drawer_session_id' => $paymentMethod === 'cash' ? $drawerSession?->id : null,
+                        'reference_number'      => $referenceNumber,
+                        'paid_at'               => now(),
+                    ]);
+
+                    // Record in cash drawer if cash payment
+                    if ($paymentMethod === 'cash' && $drawerSession) {
+                        CashDrawerReceipt::create([
+                            'cash_drawer_session_id' => $drawerSession->id,
+                            'performed_by'           => $cashier->id,
+                            'category'               => 'sale',
+                            'description'            => "Sale #{$receiptNumber}",
+                            'amount'                 => $paymentAmount,
+                        ]);
+                    }
+
+                    // Record in bank account if online payment
+                    if ($paymentMethod === 'online' && $bankAccountId) {
+                        $bankAccount = BankAccount::find($bankAccountId);
+                        if ($bankAccount) {
+                            $this->bankingService->recordInflow(
+                                $bankAccount, $paymentAmount,
+                                "Sale #{$receiptNumber} - {$paymentMethod}", 'sale',
+                                Sale::class, $sale->id, $cashier->id
+                            );
+                        }
+                    }
+                }
             }
 
             // Award loyalty points (1 point per peso spent)
@@ -295,6 +339,21 @@ class SaleService
                         "Void Sale #{$sale->receipt_number}", 'adjustment',
                         Sale::class, $sale->id, $user->id
                     );
+                }
+            } elseif ($sale->payment_method === 'multi') {
+                // Reverse multi-payments
+                $salePayments = SalePayment::where('sale_id', $sale->id)->get();
+                foreach ($salePayments as $payment) {
+                    if ($payment->payment_method === 'online' && $payment->bank_account_id) {
+                        $bankAccount = BankAccount::find($payment->bank_account_id);
+                        if ($bankAccount) {
+                            $this->bankingService->recordOutflow(
+                                $bankAccount, $payment->amount,
+                                "Void Sale #{$sale->receipt_number}", 'adjustment',
+                                Sale::class, $sale->id, $user->id
+                            );
+                        }
+                    }
                 }
             }
 

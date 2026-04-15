@@ -17,7 +17,7 @@ class StoreSaleRequest extends FormRequest
             'customer_id'        => ['nullable', 'exists:customers,id'],
             'customer_name'      => ['nullable', 'string', 'max:255'],
             'customer_phone'     => ['nullable', 'string', 'max:50'],
-            'payment_method'     => ['required', 'in:cash,online,credit'],
+            'payment_method'     => ['required', 'in:cash,online,credit,multi'],
             'bank_account_id'    => ['required_if:payment_method,online',
                                      'nullable', 'exists:bank_accounts,id'],
             'amount_tendered'    => ['required_if:payment_method,cash',
@@ -36,6 +36,12 @@ class StoreSaleRequest extends FormRequest
             'items.*.unit_price'   => ['required', 'numeric', 'min:0'],
             'items.*.discount_amount' => ['nullable', 'numeric', 'min:0'],
             'items.*.discount_type'   => ['nullable', 'in:amount,percent'],
+            // Multi-payment fields
+            'payments'             => ['required_if:payment_method,multi', 'nullable', 'array', 'min:1'],
+            'payments.*.method'    => ['required_with:payments', 'in:cash,online,credit,check'],
+            'payments.*.amount'    => ['required_with:payments', 'numeric', 'min:0'],
+            'payments.*.bank_account_id' => ['required_if:payments.*.method,online', 'nullable', 'exists:bank_accounts,id'],
+            'payments.*.reference_number' => ['nullable', 'string', 'max:100'],
         ];
     }
 }
