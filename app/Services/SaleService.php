@@ -368,12 +368,18 @@ class SaleService
                 }
             }
 
-            // Cancel any unpaid/partial debt created for this credit sale
-            if ($sale->payment_method === 'credit') {
+            // Cancel any unpaid/partial debt created for this sale (credit or multi-payment credit)
+            if ($sale->payment_method === 'credit' || $sale->payment_method === 'multi') {
                 CustomerDebt::where('sale_id', $sale->id)
                     ->whereIn('status', ['unpaid', 'partial'])
                     ->update(['status' => 'cancelled', 'balance' => 0]);
             }
+
+            // Remove cash drawer receipts created from this sale
+            // This handles both regular cash sales and multi-payment cash components
+            CashDrawerReceipt::where('category', 'sale')
+                ->where('description', "Sale #{$sale->receipt_number}")
+                ->delete();
 
             $sale->update(['status' => 'voided']);
 
