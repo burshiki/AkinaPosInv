@@ -16,10 +16,13 @@ class DebtService
         protected BankingService $bankingService
     ) {}
 
-    public function createDebtFromSale(Sale $sale): CustomerDebt
+    public function createDebtFromSale(Sale $sale, ?float $creditAmount = null): CustomerDebt
     {
         $shippingFee = (float) ($sale->shipping?->shipping_fee ?? 0);
-        $totalAmount = (float) $sale->total + $shippingFee;
+        
+        // If creditAmount is specified, use that; otherwise use full sale total
+        // This supports both full-credit sales and partial credit in multi-payment scenarios
+        $totalAmount = $creditAmount ?? ((float) $sale->total + $shippingFee);
 
         return CustomerDebt::create([
             'customer_name'  => $sale->customer_name,

@@ -13,8 +13,13 @@ class StoreSaleRequest extends FormRequest
 
     public function rules(): array
     {
+        $hasCreditPayment = (
+            request()->input('payment_method') === 'credit' ||
+            ($this->hasCreditInMulti())
+        );
+
         return [
-            'customer_id'        => ['nullable', 'exists:customers,id'],
+            'customer_id'        => $hasCreditPayment ? ['required', 'exists:customers,id'] : ['nullable', 'exists:customers,id'],
             'customer_name'      => ['nullable', 'string', 'max:255'],
             'customer_phone'     => ['nullable', 'string', 'max:50'],
             'payment_method'     => ['required', 'in:cash,online,credit,multi'],
@@ -43,5 +48,19 @@ class StoreSaleRequest extends FormRequest
             'payments.*.bank_account_id' => ['required_if:payments.*.method,online', 'nullable', 'exists:bank_accounts,id'],
             'payments.*.reference_number' => ['nullable', 'string', 'max:100'],
         ];
+    }
+
+    protected function hasCreditInMulti(): bool
+    {
+        if (request()->input('payment_method') !== 'multi') {
+            return false;
+        }
+        $payments = request()->input('payments', []);
+        foreach ($payments as $payment) {
+            if (isset($payment['method']) && $payment['method'] === 'credit' && (float) ($payment['amount'] ?? 0) > 0) {
+                return true;
+            }
+        }
+        return false;
     }
 }

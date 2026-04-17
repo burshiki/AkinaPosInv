@@ -86,6 +86,11 @@ export default function SalesCreate({ products, categories, bankAccounts, custom
     const customerDropdownRef = useRef<HTMLDivElement>(null);
     const cartPanelRef = useRef<HTMLDivElement>(null);
 
+    // Check if multi-payment includes credit
+    const hasMultiCredit = useMemo(() => {
+        return paymentMethod === 'multi' && payments.some(p => p.method === 'credit' && p.amount > 0);
+    }, [paymentMethod, payments]);
+
     // Open receipt modal when a completed sale arrives
     useEffect(() => {
         if (completedSale) setShowReceiptModal(true);
@@ -1019,6 +1024,17 @@ export default function SalesCreate({ products, categories, bankAccounts, custom
                                             </div>
                                         )}
                                     </div>
+
+                                    {/* Credit reminder */}
+                                    {hasMultiCredit && (
+                                        <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800 dark:bg-blue-950 dark:border-blue-800 dark:text-blue-200">
+                                            {selectedCustomerId ? (
+                                                <>Credit portion will be recorded as debt for <span className="font-semibold">{customerName}</span>.</>
+                                            ) : (
+                                                <>Please select a customer above to record credit sales and track their debt.</>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
@@ -1030,7 +1046,9 @@ export default function SalesCreate({ products, categories, bankAccounts, custom
                                     (cart.length === 0 && !(initialRepairJob && repairFeeAmount > 0)) ||
                                     (paymentMethod === 'cash' && tendered < total) ||
                                     (paymentMethod === 'online' && !bankAccountId) ||
-                                    (paymentMethod === 'credit' && !selectedCustomerId)
+                                    (paymentMethod === 'credit' && !selectedCustomerId) ||
+                                    (hasMultiCredit && !selectedCustomerId) ||
+                                    (paymentMethod === 'multi' && totalPaid < total)
                                 }
                                 onClick={handleSubmit}
                             >

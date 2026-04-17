@@ -220,11 +220,17 @@ class SaleService
                 $this->debtService->createDebtFromSale($sale->load('shipping'));
             } elseif ($validated['payment_method'] === 'multi') {
                 // Handle multi-payment
+                $creditAmount = 0;
                 foreach ($validated['payments'] as $payment) {
                     $paymentMethod = $payment['method'];
                     $paymentAmount = (float) $payment['amount'];
                     $bankAccountId = $payment['bank_account_id'] ?? null;
                     $referenceNumber = $payment['reference_number'] ?? null;
+
+                    // Track credit amount for later debt creation
+                    if ($paymentMethod === 'credit') {
+                        $creditAmount += $paymentAmount;
+                    }
 
                     // Record payment in sale_payments table
                     SalePayment::create([
@@ -259,6 +265,11 @@ class SaleService
                             );
                         }
                     }
+                }
+
+                // Create debt for credit portion
+                if ($creditAmount > 0) {
+                    $this->debtService->createDebtFromSale($sale->load('shipping'), $creditAmount);
                 }
             }
 
