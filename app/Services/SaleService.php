@@ -243,17 +243,6 @@ class SaleService
                         'paid_at'               => now(),
                     ]);
 
-                    // Record in cash drawer if cash payment
-                    if ($paymentMethod === 'cash' && $drawerSession) {
-                        CashDrawerReceipt::create([
-                            'cash_drawer_session_id' => $drawerSession->id,
-                            'performed_by'           => $cashier->id,
-                            'category'               => 'sale',
-                            'description'            => "Sale #{$receiptNumber}",
-                            'amount'                 => $paymentAmount,
-                        ]);
-                    }
-
                     // Record in bank account if online payment
                     if ($paymentMethod === 'online' && $bankAccountId) {
                         $bankAccount = BankAccount::find($bankAccountId);
