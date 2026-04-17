@@ -94,17 +94,6 @@ class DebtService
                 );
             }
 
-            // Record cash receipt for cash payments
-            if ($actualPaid > 0 && $paymentMethod === 'cash' && $cashDrawerSessionId !== null) {
-                CashDrawerReceipt::create([
-                    'cash_drawer_session_id' => $cashDrawerSessionId,
-                    'performed_by'           => $receivedBy,
-                    'category'               => 'debt_payment',
-                    'description'            => "Debt payment from {$customerName}",
-                    'amount'                 => $actualPaid,
-                ]);
-            }
-
             return $paymentsCreated;
         });
     }

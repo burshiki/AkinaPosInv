@@ -262,7 +262,7 @@ export default function CashDrawerShow({ session, sales, transfers, expenses, re
                 <Card>
                     <CardHeader>
                         <div className="flex items-center justify-between">
-                            <CardTitle>Cash Receipts / Cash In ({receipts.length})</CardTitle>
+                            <CardTitle>Cash In ({receipts.length})</CardTitle>
                             {receipts.length > 0 && (
                                 <span className="text-sm font-semibold text-teal-600">
                                     Total: {formatCurrency(summary.cash_receipts_total)}

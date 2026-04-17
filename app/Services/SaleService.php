@@ -243,17 +243,6 @@ class SaleService
                         'paid_at'               => now(),
                     ]);
 
-                    // Record in cash drawer if cash payment
-                    if ($paymentMethod === 'cash' && $drawerSession) {
-                        CashDrawerReceipt::create([
-                            'cash_drawer_session_id' => $drawerSession->id,
-                            'performed_by'           => $cashier->id,
-                            'category'               => 'sale',
-                            'description'            => "Sale #{$receiptNumber}",
-                            'amount'                 => $paymentAmount,
-                        ]);
-                    }
-
                     // Record in bank account if online payment
                     if ($paymentMethod === 'online' && $bankAccountId) {
                         $bankAccount = BankAccount::find($bankAccountId);
@@ -374,12 +363,6 @@ class SaleService
                     ->whereIn('status', ['unpaid', 'partial'])
                     ->update(['status' => 'cancelled', 'balance' => 0]);
             }
-
-            // Remove cash drawer receipts created from this sale
-            // This handles both regular cash sales and multi-payment cash components
-            CashDrawerReceipt::where('category', 'sale')
-                ->where('description', "Sale #{$sale->receipt_number}")
-                ->delete();
 
             $sale->update(['status' => 'voided']);
 
