@@ -37,7 +37,7 @@ class Employee extends Model
     public function getDailyRateAttribute(): float
     {
         if ($this->pay_type === 'monthly') {
-            return round((float) $this->basic_salary * 12 / ($this->monthly_divisor ?: 313), 2);
+            return round((float) $this->basic_salary / ($this->standard_work_days ?: 26), 2);
         }
 
         return (float) $this->basic_salary;

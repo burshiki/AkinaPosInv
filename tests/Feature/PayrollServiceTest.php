@@ -137,15 +137,15 @@ class PayrollServiceTest extends TestCase
     public function test_monthly_basic_pay_calculation(): void
     {
         $employee = Employee::factory()->monthly(15000.00)->create([
-            'monthly_divisor' => 313,
+            'standard_work_days' => 26,
         ]);
         $period = $this->createPeriod();
         $attendance = $this->createAttendance($employee, $period, ['days_present' => 13]);
 
         $basicPay = $this->payrollService->computeBasicPay($employee, $attendance);
 
-        // daily_rate = (15000 * 12) / 313 = 575.08 (rounded)
-        $dailyRate = round(15000 * 12 / 313, 2);
+        // daily_rate = 15000 / 26 = 576.92 (rounded)
+        $dailyRate = round(15000 / 26, 2);
         $expected = $dailyRate * 13;
         $this->assertEquals($expected, $basicPay);
     }

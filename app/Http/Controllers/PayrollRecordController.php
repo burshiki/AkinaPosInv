@@ -126,7 +126,7 @@ class PayrollRecordController extends Controller
             + $allowances
             - $lateDeduction;
 
-        $totalDeductions = $sssEmp + $philEmp + $pagibigEmp + $bir + $lateDeduction + $other + $cashAdvance + $loanDeduction;
+        $totalDeductions = $sssEmp + $philEmp + $pagibigEmp + $bir + $other + $cashAdvance + $loanDeduction;
         $netPay = $grossPay - $totalDeductions;
 
         $payrollRecord->update([

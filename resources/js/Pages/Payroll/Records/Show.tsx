@@ -127,7 +127,7 @@ export default function RecordShow({ record, bankAccounts, openDrawerSession }: 
         + Number(data.allowances || 0) - Number(record.late_deduction);
     const totalDeductionsPreview = Number(data.sss_employee || 0) + Number(data.philhealth_employee || 0)
         + Number(data.pagibig_employee || 0) + Number(data.bir_withholding_tax || 0)
-        + Number(record.late_deduction) + Number(data.cash_advance || 0) + Number(data.loan_deduction || 0) + Number(data.other_deductions || 0);
+        + Number(data.cash_advance || 0) + Number(data.loan_deduction || 0) + Number(data.other_deductions || 0);
     const netPayPreview = grossPreview - totalDeductionsPreview;
 
     return (
@@ -201,7 +201,6 @@ export default function RecordShow({ record, bankAccounts, openDrawerSession }: 
                                     <Field label="PhilHealth" field="philhealth_employee" data={data} setData={setData} error={errors.philhealth_employee} />
                                     <Field label="Pag-IBIG" field="pagibig_employee" data={data} setData={setData} error={errors.pagibig_employee} />
                                     <Field label="BIR Withholding Tax" field="bir_withholding_tax" data={data} setData={setData} error={errors.bir_withholding_tax} />
-                                    <Row label="Late Deduction" value={fmt(record.late_deduction)} />
                                     <Field label="C.A. (Cash Advance)" field="cash_advance" data={data} setData={setData} error={errors.cash_advance} />
                                     <Field label="Loan Deduction" field="loan_deduction" data={data} setData={setData} error={errors.loan_deduction} />
                                     <Field label="Other Deductions" field="other_deductions" data={data} setData={setData} error={errors.other_deductions} />
@@ -221,7 +220,6 @@ export default function RecordShow({ record, bankAccounts, openDrawerSession }: 
                                     <Row label="PhilHealth" value={fmt(record.philhealth_employee)} />
                                     <Row label="Pag-IBIG" value={fmt(record.pagibig_employee)} />
                                     <Row label="BIR Withholding Tax" value={fmt(record.bir_withholding_tax)} />
-                                    <Row label="Late Deduction" value={fmt(record.late_deduction)} />
                                     {Number(record.cash_advance) > 0 && <Row label="C.A. (Cash Advance)" value={fmt(record.cash_advance)} />}
                                     {Number(record.loan_deduction) > 0 && <Row label="Loan Deduction" value={fmt(record.loan_deduction)} />}
                                     {Number(record.other_deductions) > 0 && <Row label={`Other (${record.other_deductions_notes ?? ''})`} value={fmt(record.other_deductions)} />}

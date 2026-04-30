@@ -92,7 +92,7 @@ class PayrollService
         $otherRecurring = $recurringDeductions['other'];
 
         $totalDeductions = $sss['employee'] + $phil['employee'] + $pagibig['employee']
-            + $bir + $lateDeduction + $cashAdvance + $loanDeduction + $otherRecurring;
+            + $bir + $cashAdvance + $loanDeduction + $otherRecurring;
         $netPay = $grossPay - $totalDeductions;
 
         return PayrollRecord::updateOrCreate(
@@ -346,9 +346,9 @@ class PayrollService
     private function getDailyRate(Employee $employee): float
     {
         if ($employee->pay_type === 'monthly') {
-            // monthly_divisor (e.g. 313) is the annual working-days divisor.
-            // daily_rate = (monthly_salary × 12) / annual_working_days
-            return round((float) $employee->basic_salary * 12 / ($employee->monthly_divisor ?: 313), 2);
+            // For monthly employees: daily_rate = monthly_salary / standard_work_days
+            // e.g. 16,000 / 26 = 615.38 per day (allows correct semi-monthly calculation)
+            return round((float) $employee->basic_salary / ($employee->standard_work_days ?: 26), 2);
         }
 
         return (float) $employee->basic_salary;
